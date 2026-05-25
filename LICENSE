@@ -1,0 +1,163 @@
+DevOps Local Non-Commercial License, v1.0
+
+Copyright (c) 2026 DevOps Local contributors
+
+This is a source-available, non-commercial license. It is NOT an
+OSI-approved open-source license. If you need an OSI-compatible license
+for your use case, contact the copyright holder to discuss a separate
+commercial license.
+
+------------------------------------------------------------------------
+
+1. DEFINITIONS
+
+   "Software" means the source code, object code, documentation, and any
+   other files distributed under this license.
+
+   "You" / "Your" means the individual or legal entity exercising rights
+   under this license.
+
+   "Distribute" means to make a copy of the Software available to any
+   person or entity other than Yourself.
+
+   "Sell" means to offer, sell, license, sublicense, rent, lease, or
+   otherwise transfer the Software (or any service whose primary function
+   is running the Software) in exchange for money, goods, services, or
+   any other consideration.
+
+   "Non-Commercial Purpose" means use of the Software:
+     (a) by an individual for personal, educational, or research purposes;
+     (b) for evaluation, testing, or proof-of-concept work;
+     (c) inside any organization (including for-profit organizations),
+         provided the Software is not Sold to any third party and is not
+         offered as a hosted service to any third party.
+
+   "Commercial Purpose" means any use that is not a Non-Commercial Purpose.
+
+2. GRANT OF RIGHTS
+
+   Subject to the terms of this license, the copyright holders grant You
+   a worldwide, royalty-free, non-exclusive, non-transferable license to
+   use, copy, modify, and Distribute the Software, in source or compiled
+   form, solely for a Non-Commercial Purpose.
+
+   Each contributor also grants You a worldwide, royalty-free,
+   non-exclusive license under their essential patent claims to make,
+   have made, use, and Distribute the Software for Non-Commercial Purposes
+   only. This patent grant does not extend to Commercial Purposes.
+
+3. CONDITIONS
+
+   3.1 ATTRIBUTION. You must retain, in all copies and substantial
+   portions of the Software, this license text and all copyright,
+   patent, trademark, and authorship notices that appear in the
+   original Software.
+
+   3.2 SHARE-ALIKE. Any modified, adapted, or derivative version of
+   the Software that You Distribute must be Distributed under this
+   same license, with these same conditions, and with a clear notice
+   describing the changes You made.
+
+   3.3 NO ENDORSEMENT. You may not use the names, logos, trademarks,
+   or trade names of the Software's authors or contributors to endorse
+   or promote products derived from the Software without their prior
+   written permission.
+
+4. PROHIBITED USES
+
+   Without a separate written agreement with the copyright holder, You
+   may NOT:
+
+   (a) Sell the Software, copies of the Software, or compilations
+       containing the Software;
+
+   (b) Operate the Software, or any service whose primary function is
+       running the Software, as a paid hosted service (SaaS) for any
+       third party;
+
+   (c) Bundle, embed, or include the Software in any product or service
+       that You Sell to third parties, where the Software constitutes a
+       material part of what is being Sold;
+
+   (d) Use the Software to provide consulting, integration, or
+       implementation services to third parties for a fee, where the
+       Software is a material part of the service delivered;
+
+   (e) Sublicense the Software to third parties, except by Distributing
+       it under this same license unchanged.
+
+   Internal use of the Software at a for-profit organization (including
+   running the agent on employee machines, including in production
+   workflows that the organization uses to build its own products) is
+   permitted under this license, provided the organization does not
+   Sell access to the Software itself.
+
+   If You wish to do any of the things prohibited above, contact the
+   copyright holder to negotiate a commercial license.
+
+5. TERMINATION
+
+   This license terminates automatically and immediately if You violate
+   any of its terms. Upon termination, You must cease all use of the
+   Software and destroy or permanently delete all copies in Your
+   possession or control.
+
+   The copyright holder may, at their sole discretion, reinstate Your
+   license in writing if You promptly cure the violation.
+
+   Sections 1 (Definitions), 6 (Disclaimer), and 7 (Limitation of
+   Liability) survive termination.
+
+6. DISCLAIMER OF WARRANTY
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND
+   NONINFRINGEMENT. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE
+   OF THE SOFTWARE IS WITH YOU.
+
+7. LIMITATION OF LIABILITY
+
+   IN NO EVENT AND UNDER NO LEGAL THEORY, WHETHER IN TORT (INCLUDING
+   NEGLIGENCE), CONTRACT, OR OTHERWISE, SHALL ANY AUTHOR, COPYRIGHT
+   HOLDER, OR CONTRIBUTOR BE LIABLE TO YOU FOR ANY DIRECT, INDIRECT,
+   SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES OF ANY KIND ARISING
+   AS A RESULT OF THIS LICENSE OR OUT OF THE USE OR INABILITY TO USE
+   THE SOFTWARE, EVEN IF SUCH AUTHOR, COPYRIGHT HOLDER, OR CONTRIBUTOR
+   HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+8. SEVERABILITY
+
+   If any provision of this license is held to be unenforceable, the
+   remaining provisions remain in full force and effect. The
+   unenforceable provision shall be replaced by an enforceable
+   provision that most closely matches the intent of the original.
+
+9. COMMERCIAL LICENSING
+
+   For Commercial Purpose use, including any use prohibited under
+   Section 4, contact the copyright holder to discuss a separate
+   commercial license. Reasonable commercial terms are available.
+
+   Contact: <your-email-or-github-issue-link-here>
+
+------------------------------------------------------------------------
+
+QUICK SUMMARY (informational, not legally binding — Sections 1-9 above
+control):
+
+  ✅ You CAN
+     - Use it personally, in your own projects, for learning or research
+     - Modify and fork it (under this same license)
+     - Run it inside your company on internal projects
+     - Build your own product with it, as long as you're not Selling
+       access to this Software as a material part of your product
+
+  ❌ You CANNOT
+     - Sell copies of this Software
+     - Offer it as a paid SaaS / hosted service
+     - Bundle it into something you Sell where it's a material component
+     - Sell services that consist primarily of running this Software
+
+  💼 If you want to do any of the ❌ items, email the copyright holder.
+     Commercial licenses are available.

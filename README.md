@@ -1,6 +1,6 @@
 # DevOps Local — Operations Dashboard
 
-A self-contained developer console you run on your own machine. Five tools (Context-Snap, Quick-Docs Scraper, Dependency Map, Log-Tail Filter, Issue Template Filler) for the small, recurring tasks that interrupt a developer's flow. No cloud account, no telemetry, no build step — just static files plus an optional Node "agent" process that adds live system access and a background **Autonomous Brain**.
+A self-contained developer console you run on your own machine. Five tools (Context-Snap, Quick-Docs Scraper, Dependency Map, Log-Tail Filter, Issue Template Filler) for the small, recurring tasks that interrupt a developer's flow. No cloud account, no telemetry, no build step — just static files plus an optional Node "agent" process that adds live system access and a background **Autonomous Brain**. Source-available, non-commercial use free, commercial license available.
 
 ---
 

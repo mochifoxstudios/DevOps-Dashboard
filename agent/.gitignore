@@ -1,0 +1,11 @@
+node_modules/
+.env
+.brain-state.json
+.audit.log
+.audit-*.log
+.audit-tip
+.ai-keys.json
+.salt
+.github-queue.json
+fixtures/*.log
+fixtures/*.tmp

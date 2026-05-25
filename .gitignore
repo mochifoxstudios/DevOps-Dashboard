@@ -1,0 +1,23 @@
+# Agent local state — generated at runtime, never commit
+agent/.env
+agent/.brain-state.json
+agent/.audit.log
+agent/.audit-*.log
+agent/.audit-tip
+agent/.ai-keys.json
+agent/.salt
+agent/.github-queue.json
+agent/node_modules/
+agent/fixtures/*.log
+agent/fixtures/*.tmp
+
+# Brainstorming + planning artifacts (regenerated)
+.superpowers/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo

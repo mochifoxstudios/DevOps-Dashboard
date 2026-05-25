@@ -1,0 +1,20 @@
+{
+  "name": "postgres-rotation",
+  "input": {
+    "workspace": "payments-api",
+    "branch": "main",
+    "context": [
+      "2026-05-17T09:55:00Z INFO Server starting on :3000",
+      "2026-05-17T09:55:01Z INFO Connecting to postgres at pg.internal:5432",
+      "2026-05-17T09:55:02Z WARN Slow connection: 487ms",
+      "2026-05-17T09:55:02Z INFO Migrations: 0 pending",
+      "2026-05-17T09:55:03Z INFO Worker pool: 4 threads"
+    ],
+    "matchedLine": "2026-05-17T09:55:04Z FATAL pg: password authentication failed for user 'payments_app'"
+  },
+  "expectations": {
+    "confidence_at_least": "medium",
+    "must_mention": ["password", "auth", "credentials"],
+    "must_not_mention": ["disk space"]
+  }
+}

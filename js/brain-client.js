@@ -494,7 +494,21 @@
       if (!D.brain.online) return;
       fetch((D.agent.base || '') + '/api/llm/models').then(function (r) { return r.json(); }).then(function (j) {
         var sel = document.querySelector('[data-llm-model]');
-        if (sel) sel.innerHTML = (j.models || []).map(function (m) { return '<option>' + D.escapeHtml(m) + '</option>'; }).join('');
+        if (!sel) return;
+        var models = j.models || [];
+        sel.innerHTML = models.map(function (m) { return '<option>' + D.escapeHtml(m) + '</option>'; }).join('');
+        if (!models.length) return;
+        // Keep the agent's saved model selected if it's still available; otherwise
+        // fall back to the first real model AND push it so the agent stops testing
+        // against the stale default (e.g. llama3.1:8b that isn't installed → 404).
+        var saved = (D.brain.status && D.brain.status.settings && D.brain.status.settings.llmModel) || '';
+        if (models.indexOf(saved) !== -1) {
+          sel.value = saved;
+        } else {
+          sel.value = models[0];
+          D.brain.pushSettings({ llmModel: models[0] });
+          if (D.brain.status && D.brain.status.settings) D.brain.status.settings.llmModel = models[0];
+        }
       }).catch(function () {});
     }
     loadModels();

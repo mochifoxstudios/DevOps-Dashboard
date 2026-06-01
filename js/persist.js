@@ -684,9 +684,20 @@
     var view = document.getElementById('view-settings');
     if (!view) return;
     var saved = D.store.get(STORE.settings, {});
+    // One-time migration: scrub any secrets that earlier builds wrote to the
+    // browser store before password fields were excluded from persistence.
+    var scrubbed = false;
+    Object.keys(saved).forEach(function (k) {
+      if (/::(API key|GitHub PAT)$/.test(k)) { delete saved[k]; scrubbed = true; }
+    });
+    if (scrubbed) D.store.set(STORE.settings, saved);
     view.querySelectorAll('input, select, textarea').forEach(function (ctrl) {
       // Skip the search/find inputs that aren't settings (none currently but defensive)
       if (ctrl.closest('.settings-rail')) return;
+      // NEVER persist secrets to localStorage. Password fields (LLM API key,
+      // GitHub PAT) are owned by the agent keystore and must not touch the
+      // browser store. Also honor an explicit opt-out marker.
+      if (ctrl.type === 'password' || ctrl.hasAttribute('data-no-persist')) return;
       var grp = controlGroupId(ctrl);
       var lbl = controlLabel(ctrl);
       // Use position-based fallback if no label

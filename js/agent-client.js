@@ -149,8 +149,58 @@
     }
   }
 
+  // Populate Settings → About "System" row + Local Toolchain rows with REAL
+  // data from the agent, replacing the design-time mock values. No-op offline.
+  function populateSystemAndToolchain () {
+    if (!D.agent.online) return;
+    var base = D.agent.base || '';
+    // About → System row
+    fetch(base + '/api/system').then(function (r) { return r.json(); }).then(function (s) {
+      var prettyOs = ({ win32: 'Windows', darwin: 'macOS', linux: 'Linux' })[s.platform] || s.platform;
+      var line = prettyOs + ' (' + s.arch + ') · ' + s.cpus + ' cores · ' +
+                 s.totalMemGB + ' GB RAM · ' + s.freeMemGB + ' GB free';
+      var about = document.getElementById('s-about');
+      if (about) {
+        about.querySelectorAll('.row-item').forEach(function (row) {
+          var t = row.querySelector('.row-title');
+          if (t && t.textContent.trim() === 'System') {
+            var sub = row.querySelector('.row-sub');
+            if (sub) sub.textContent = line;
+          }
+        });
+      }
+    }).catch(function () {});
+    // Local Toolchain rows
+    fetch(base + '/api/toolchain').then(function (r) { return r.json(); }).then(function (tc) {
+      var group = document.getElementById('s-toolchain');
+      if (!group) return;
+      // python row title is 'python3' in the HTML; map our 'python' key to it.
+      var byTitle = { git: 'git', node: 'node', python: 'python3', cargo: 'cargo' };
+      Object.keys(byTitle).forEach(function (key) {
+        var info = tc[key];
+        if (!info) return;
+        group.querySelectorAll('.row-item').forEach(function (row) {
+          var t = row.querySelector('.row-title');
+          if (!t || t.textContent.trim() !== byTitle[key]) return;
+          var sub = row.querySelector('.row-sub');
+          var badge = row.querySelector('.badge');
+          if (info.found) {
+            if (sub) sub.textContent = info.path + (info.version ? ' · v' + info.version : '');
+            if (badge) { badge.textContent = 'detected'; badge.className = 'badge ok'; }
+          } else {
+            if (sub) sub.textContent = 'not found on PATH';
+            if (badge) { badge.textContent = 'missing'; badge.className = 'badge warn'; }
+          }
+        });
+      });
+    }).catch(function () {});
+  }
+
   function init () {
-    D.agent.detect().then(updateBrandPill);
+    D.agent.detect().then(function (info) {
+      updateBrandPill();
+      if (info) populateSystemAndToolchain();
+    });
     // Click the brand pill to re-probe + show status dialog.
     var pill = document.querySelector('.brand .status-pill');
     if (pill) {

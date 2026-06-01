@@ -26,6 +26,7 @@ const { Audit } = require('./lib/audit');
 const { Keystore } = require('./lib/keystore');
 const { diffSnapshots } = require('./lib/snapshot-diff');
 const { GitHub } = require('./lib/github');
+const sysinfo = require('./lib/system');
 
 const PORT = parseInt(process.env.PORT || '3737', 10);
 const ALLOW_DESTRUCTIVE = process.env.ALLOW_DESTRUCTIVE === 'true';
@@ -442,6 +443,15 @@ app.delete('/api/llm/key/:provider', (req, res) => {
   keystore.delete(req.params.provider + '_api_key');
   res.json({ ok: true });
 });
+
+// ---- Phase 5: System + toolchain (real data for Settings → About / Toolchain) ----
+app.get('/api/system', (req, res) => {
+  res.json(Object.assign({ agentVersion: VERSION }, sysinfo.systemInfo()));
+});
+
+app.get('/api/toolchain', wrap(async (req, res) => {
+  res.json(await sysinfo.toolchain());
+}));
 
 // ---- Phase 5: GitHub routes ----
 app.post('/api/github/pat', wrap(async (req, res) => {

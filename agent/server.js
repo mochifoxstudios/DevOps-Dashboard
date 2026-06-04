@@ -17,6 +17,7 @@ const path = require('path');
 
 const { resolveWorkspaceRoot, withinWorkspace } = require('./lib/safety');
 const { resolveStateDir } = require('./lib/state-dir');
+const airgap = require('./lib/airgap');
 const ctx = require('./lib/context-snap');
 const logTail = require('./lib/log-tail');
 const depRegistry = require('./lib/dep-registry');
@@ -32,9 +33,13 @@ const sysinfo = require('./lib/system');
 const PORT = parseInt(process.env.PORT || '3737', 10);
 const ALLOW_DESTRUCTIVE = process.env.ALLOW_DESTRUCTIVE === 'true';
 const EXTRA_REDACT = process.env.EXTRA_REDACT_PATTERNS || '';
-const SCRAPER_ALLOWED_HOSTS = process.env.SCRAPER_ALLOWED_HOSTS || '';
-const SCRAPER_ALLOW_ANY = process.env.SCRAPER_ALLOW_ANY === 'true';
-const REGISTRY_LOOKUP_ENABLED = process.env.REGISTRY_LOOKUP_ENABLED !== 'false';
+// Air-Gapped Mode (AIRGAP=true) forces a zero-egress posture: registry lookups
+// off, scraper deny-all, and the LLM pinned to a local endpoint (see buildProvider).
+const AIRGAP_CFG = airgap.airgapConfig(process.env);
+const AIRGAP = AIRGAP_CFG.airgap;
+const SCRAPER_ALLOWED_HOSTS = AIRGAP_CFG.scraperAllowedHosts;
+const SCRAPER_ALLOW_ANY = AIRGAP_CFG.scraperAllowAny;
+const REGISTRY_LOOKUP_ENABLED = AIRGAP_CFG.registryLookupEnabled;
 const LOG_TAIL_EXTS = (process.env.LOG_TAIL_EXTENSIONS || '')
   .split(',').map((s) => s.trim()).filter(Boolean);
 const SSE_MAX_MS = parseInt(process.env.SSE_MAX_MS || '', 10) || 30 * 60 * 1000; // force-close SSE after 30 min
@@ -267,6 +272,19 @@ app.post('/api/scraper/fetch', wrap(async (req, res) => {
   }
 }));
 
+// Air-Gapped Mode self-test — proves the effective config can't reach the network.
+app.get('/api/airgap/selftest', (req, res) => {
+  const eff = effectiveLLM();
+  res.json(airgap.selfTest({
+    airgap: AIRGAP,
+    registryLookupEnabled: REGISTRY_LOOKUP_ENABLED,
+    scraperAllowAny: SCRAPER_ALLOW_ANY,
+    scraperAllowedHosts: SCRAPER_ALLOWED_HOSTS,
+    llmProvider: eff.provider,
+    llmEndpoint: eff.endpoint || ''
+  }));
+});
+
 app.get('/api/scraper/config', (req, res) => {
   res.json({
     allowAny: SCRAPER_ALLOW_ANY,
@@ -316,12 +334,23 @@ brain.setAutoFiler(async (draft) => {
 });
 
 // LLM factory — built per-request from current brain settings.
+// Resolve the LLM provider+endpoint the agent will actually use. In Air-Gapped
+// Mode this is pinned to a local Ollama endpoint regardless of configured provider.
+function effectiveLLM() {
+  const s = brain.settings || {};
+  if (AIRGAP) {
+    return { provider: 'ollama', endpoint: airgap.isLocalEndpoint(s.llmEndpoint) ? s.llmEndpoint : 'http://127.0.0.1:11434' };
+  }
+  return { provider: (s.llmProvider || 'ollama').toLowerCase(), endpoint: s.llmEndpoint || null };
+}
+
 function buildProvider() {
   const s = brain.settings || {};
+  const eff = effectiveLLM();
   return new LLMProvider({
-    providerName: (s.llmProvider || 'ollama').toLowerCase(),
+    providerName: eff.provider,
     model:        s.llmModel || 'llama3.1:8b',
-    endpoint:     s.llmEndpoint || null,
+    endpoint:     eff.endpoint,
     region:       s.llmRegion || 'us-east-1',
     apiKeyFn:     (name) => keystore.get(name + '_api_key'),
     audit,
@@ -582,6 +611,7 @@ function startServer(port, fallback) {
  Workspace:   ${WORKSPACE_ROOT}
  State dir:   ${AGENT_STATE_DIR}
  Destructive: ${ALLOW_DESTRUCTIVE ? 'ALLOWED (with X-Confirm-Destructive: yes)' : 'BLOCKED'}
+ Air-gap:     ${AIRGAP ? 'ON — zero egress (registry off · scraper deny-all · LLM local-only)' : 'off'}
  Frontend:    http://localhost:${p}/
  Health:      http://localhost:${p}/api/health
  Brain:       http://localhost:${p}/api/agent/status

@@ -38,6 +38,7 @@ npm run dev
 |---|---|---|
 | `PORT` | `3737` | Port the agent listens on |
 | `HOST` | `127.0.0.1` | Interface to bind. Loopback by default; `0.0.0.0` exposes the (unauthenticated) agent to your LAN |
+| `AIRGAP` | `false` | When `true`, forces zero egress: registry off, scraper deny-all, LLM pinned to local Ollama. Verify via `GET /api/airgap/selftest` |
 | `CORS_ALLOWED_ORIGINS` | empty | Extra cross-origin browser origins allowed (comma-separated). localhost/127.0.0.1 always allowed; remote always denied |
 | `LOG_TAIL_EXTENSIONS` | `.log,.txt,.out,.err` | Extensions the log-tail `/file` and `/stream` endpoints may read |
 | `WORKSPACE_ROOT` | cwd | Single directory the agent is allowed to inspect (file ops + `git`) |

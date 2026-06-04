@@ -160,7 +160,7 @@
   });
   D.bindByText('#view-settings', 'Override path', function () { D.toast('Pick a binary from disk'); });
   D.bindByText('#view-settings', 'Browse…', function () { D.toast('Locate cargo binary'); });
-  D.bindByText('#view-settings', 'Check now', function () { D.toast('Already up to date · 0.4.2 is current'); });
+  D.bindByText('#view-settings', 'Check now', function () { D.toast('Already up to date · ' + (D.version || 'current') + ' is current'); });
   D.bindByText('#view-settings', 'Check for offline updates…', function () { D.toast('No update package found at ~/Downloads/devops-local-*.dmg'); });
   D.bindByText('#view-settings', 'Release notes', function () {
     D.activate('help');

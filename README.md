@@ -188,7 +188,7 @@ You'll see a startup banner:
 
 ```
 ────────────────────────────────────────────────────────────────
- DevOps Local Agent v1.0.0
+ DevOps Local Agent v1.00.1
  Listening on http://localhost:3737
  Workspace:   D:/Path/To/My/Project
  Destructive: BLOCKED

@@ -1,6 +1,6 @@
 {
   "name": "devops-local-agent",
-  "version": "1.0.0",
+  "version": "1.00.1",
   "private": true,
   "description": "Local backend agent for the DevOps Local dashboard. Restricted to a single workspace root; refuses access outside it.",
   "main": "server.js",

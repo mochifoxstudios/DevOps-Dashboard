@@ -72,7 +72,7 @@
   };
 
   // Application version — bump when shipping breaking changes.
-  D.version = '1.0.0';
+  D.version = '1.00.1';
   D.brandName = 'DevOps Local';
 
   // Lazy toast: created on first call.

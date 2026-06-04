@@ -793,10 +793,9 @@
   function wireAboutPanel () {
     var about = document.getElementById('s-about');
     if (!about) return;
-    // Update version pills if present
-    about.querySelectorAll('.row-sub, .row-title, code, .ic').forEach(function (n) {
-      if (/0\.\d+\.\d+/.test(n.textContent)) n.textContent = n.textContent.replace(/0\.\d+\.\d+/, D.version);
-    });
+    // Set the version pill directly via its marker — robust, and won't clobber
+    // other numbers (e.g. "14.4 · 16 GB") the way a version-shaped regex could.
+    about.querySelectorAll('[data-version-pill]').forEach(function (n) { n.textContent = D.version; });
     // "Copy diagnostics" → real diagnostics
     about.querySelectorAll('.btn').forEach(function (b) {
       var t = b.textContent.replace(/\s+/g, ' ').trim();

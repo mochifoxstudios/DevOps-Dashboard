@@ -317,7 +317,7 @@
           '<div class="modal-header"><div class="modal-title">Restore snapshot · ' + list.length + ' saved</div>' +
             '<button class="close-btn" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
           '</div>' +
-          '<div class="modal-body" style="max-height: 60vh;">' + rows + '</div>' +
+          '<div class="modal-body" style="max-height: 60vh;"><input class="input" data-snap-search type="text" placeholder="Search snapshots by name, workspace, or branch…" style="margin-bottom:10px;" />' + rows + '</div>' +
           '<div class="modal-footer"><button class="btn" data-clear-snaps>Clear all</button><button class="btn" data-c-cancel>Close</button></div>' +
         '</div>';
       document.body.appendChild(bd);
@@ -325,6 +325,13 @@
       bd.addEventListener('click', function (e) { if (e.target === bd) close(); });
       bd.querySelector('.close-btn').addEventListener('click', close);
       bd.querySelector('[data-c-cancel]').addEventListener('click', close);
+      var snapSearch = bd.querySelector('[data-snap-search]');
+      if (snapSearch) snapSearch.addEventListener('input', function () {
+        var q = snapSearch.value.toLowerCase().trim();
+        bd.querySelectorAll('[data-snap-id]').forEach(function (row) {
+          row.style.display = (!q || row.textContent.toLowerCase().indexOf(q) !== -1) ? '' : 'none';
+        });
+      });
       bd.querySelector('[data-clear-snaps]').addEventListener('click', function () {
         saveList(STORE_KEY.snapshots, []);
         D.state.capturedSnapshotCount = 0;
@@ -696,6 +703,15 @@
     // Initial render of cached docs into tree (preserves design's initial tree as fallback)
     if (getCache().length) refreshTree();
     badgeCache();
+
+    // Wire the (previously dead) "Filter…" input to filter the cached-doc tree.
+    var docFilter = view.querySelector('input[placeholder*="Filter"]');
+    if (docFilter) docFilter.addEventListener('input', function () {
+      var q = docFilter.value.toLowerCase().trim();
+      view.querySelectorAll('.tree-item[data-doc-id]').forEach(function (item) {
+        item.style.display = (!q || item.textContent.toLowerCase().indexOf(q) !== -1) ? '' : 'none';
+      });
+    });
 
     return { fetchUrl: fetchUrl, refreshTree: refreshTree, getCache: getCache };
   })();

@@ -455,6 +455,19 @@
           });
           var data = await resp.json();
           resultEl.innerHTML = renderDiff(data);
+          var cmd = resultEl.querySelector('[data-copy-md]');
+          if (cmd) cmd.addEventListener('click', function () {
+            var md = buildDiffMarkdown(data);
+            if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(md).then(function () {}, function () {});
+            try {
+              var drafts = D.store.get('devops:issue-drafts', []);
+              drafts.unshift({ id: 'draft-' + Date.now(), name: 'snapshot-diff', title: 'Snapshot diff', content: md, when: new Date().toISOString() });
+              if (drafts.length > 30) drafts.length = 30;
+              D.store.set('devops:issue-drafts', drafts);
+              document.dispatchEvent(new CustomEvent('devops:draft-changed'));
+            } catch (e) {}
+            D.toast('Diff copied as Markdown + added to Issue drafts');
+          });
         } catch (e) {
           resultEl.innerHTML = '<div class="empty-state es-sub">Agent offline — narration unavailable.</div>';
         }
@@ -463,20 +476,48 @@
 
     function renderDiff(data) {
       var d = data.diff || {};
+      var env = d.env || {}, git = d.git || {}, ports = d.ports || {}, pids = d.pids || {};
+      function esc(s) { return D.escapeHtml(String(s == null ? '' : s)); }
+      function chips(arr) { return (arr && arr.length) ? arr.map(function (x) { return '<span class="badge" style="margin:2px;">' + esc(x) + '</span>'; }).join('') : '<span class="ver dim">none</span>'; }
       var html = '';
       if (data.narration) {
-        html += '<div class="callout" style="margin-bottom:12px;">' + D.escapeHtml(data.narration) + '</div>';
+        html += '<div class="callout" style="margin-bottom:12px;">' + esc(data.narration) + '</div>';
       } else if (data.narration === null) {
-        html += '<div class="empty-state es-sub" style="padding:10px;">narration unavailable</div>';
+        html += '<div class="empty-state es-sub" style="padding:10px;">AI narration unavailable (no LLM provider configured)</div>';
       }
-      html += '<h4>Environment</h4>';
-      html += '<div class="row">added: ' + (d.env.added || []).join(', ') + '</div>';
-      html += '<div class="row">removed: ' + (d.env.removed || []).join(', ') + '</div>';
-      html += '<div class="row">changed: ' + (d.env.changed || []).map(function (c) { return c.key; }).join(', ') + '</div>';
-      html += '<h4 style="margin-top:10px;">Git</h4><div>' + (d.git.branchChanged ? d.git.branchChanged.from + ' → ' + d.git.branchChanged.to : 'no branch change') + ' · sha-changed: ' + d.git.shaChanged + ' · dirty-delta: ' + d.git.dirtyDelta + '</div>';
-      html += '<h4 style="margin-top:10px;">Ports</h4><div>opened: ' + (d.ports.opened || []).join(', ') + ' · closed: ' + (d.ports.closed || []).join(', ') + '</div>';
-      html += '<h4 style="margin-top:10px;">PIDs</h4><div>+' + d.pids.gained + ' / −' + d.pids.lost + '</div>';
+      html += '<div class="row" style="justify-content:space-between;align-items:center;"><h4>Environment</h4><button class="btn" data-copy-md data-wired="1">Copy as Markdown</button></div>';
+      html += '<div style="margin:4px 0;"><span class="ver dim">added:</span> ' + chips(env.added) + '</div>';
+      html += '<div style="margin:4px 0;"><span class="ver dim">removed:</span> ' + chips(env.removed) + '</div>';
+      var changed = env.changed || [];
+      if (changed.length) {
+        html += '<div style="margin:6px 0;"><span class="ver dim">changed (old → new):</span></div>';
+        html += '<div style="max-height:160px;overflow:auto;border:1px solid var(--border);border-radius:var(--radius);padding:6px;font-family:var(--font-mono);font-size:12px;">' +
+          changed.map(function (c) { return '<div><span class="code-key">' + esc(c.key) + '</span>: <span class="ver dim">' + esc(c.before) + '</span> → <span class="ver">' + esc(c.after) + '</span></div>'; }).join('') +
+          '</div>';
+      } else {
+        html += '<div style="margin:4px 0;"><span class="ver dim">changed:</span> <span class="ver dim">none</span></div>';
+      }
+      html += '<h4 style="margin-top:10px;">Git</h4><div>' + (git.branchChanged ? esc(git.branchChanged.from) + ' → ' + esc(git.branchChanged.to) : 'no branch change') + ' · sha-changed: ' + !!git.shaChanged + ' · dirty-delta: ' + esc(git.dirtyDelta) + '</div>';
+      html += '<h4 style="margin-top:10px;">Ports</h4><div>opened: ' + chips(ports.opened) + ' · closed: ' + chips(ports.closed) + '</div>';
+      html += '<h4 style="margin-top:10px;">PIDs</h4><div>+' + esc(pids.gained) + ' / −' + esc(pids.lost) + '</div>';
       return html;
+    }
+
+    function buildDiffMarkdown(data) {
+      var d = data.diff || {};
+      var env = d.env || {}, git = d.git || {}, ports = d.ports || {}, pids = d.pids || {};
+      var L = ['## Snapshot diff'];
+      if (data.narration) { L.push(''); L.push('> ' + data.narration); }
+      L.push('', '### Environment');
+      L.push('- **Added:** ' + ((env.added || []).join(', ') || 'none'));
+      L.push('- **Removed:** ' + ((env.removed || []).join(', ') || 'none'));
+      if ((env.changed || []).length) {
+        L.push('- **Changed:**');
+        env.changed.forEach(function (c) { L.push('  - `' + c.key + '`: `' + c.before + '` → `' + c.after + '`'); });
+      } else { L.push('- **Changed:** none'); }
+      L.push('', '### Git', '- ' + (git.branchChanged ? (git.branchChanged.from + ' → ' + git.branchChanged.to) : 'no branch change') + ' · sha-changed: ' + !!git.shaChanged + ' · dirty-delta: ' + (git.dirtyDelta || 0));
+      L.push('', '### Ports / PIDs', '- opened: ' + ((ports.opened || []).join(', ') || 'none') + ' · closed: ' + ((ports.closed || []).join(', ') || 'none'), '- PIDs +' + (pids.gained || 0) + ' / -' + (pids.lost || 0));
+      return L.join('\n');
     }
   })();
 

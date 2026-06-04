@@ -946,8 +946,10 @@
 
     function renderLines(lines) {
       if (!terminal) return;
+      // Apply the active filter to the real buffer (view-only; buffer stays intact).
+      var visible = lines.filter(passesFilter);
       // Keep terminal styling; build .term-line elements
-      var html = lines.slice(-2000).map(function (l) {
+      var html = visible.slice(-2000).map(function (l) {
         var lvl = (l.level || 'info').toLowerCase();
         var cls = 'term-line' + (lvl === 'err' ? ' err-row' : '');
         var ts = l.ts ? '<span class="ts">' + D.escapeHtml(l.ts) + '</span>' : '';
@@ -965,6 +967,16 @@
     var liveStream = null;       // EventSource handle when streaming
     var livePath = null;         // workspace-relative path being tailed
     var renderPaused = false;    // when true, lines accumulate but aren't drawn
+
+    // Active filter state — engine-owned. The buffer is never mutated by the
+    // filter; renderLines() just hides non-matching lines on draw.
+    var filterText = '';
+    var filterRegex = false;
+    var filterLevels = null;     // Set of allowed levels, or null = all levels
+    function passesFilter(l) {
+      if (filterLevels && !filterLevels.has(l.level)) return false;
+      return D.logEngine.lineMatches(l, { text: filterText, useRegex: filterRegex });
+    }
 
     function appendLines(newLines) {
       for (var i = 0; i < newLines.length; i++) buffer.push(newLines[i]);
@@ -1159,6 +1171,51 @@
     wireDropTarget(view, '', function (f) {
       if (/\.(log|txt|out|err)$/i.test(f.name)) handleFile(f);
     });
+
+    // ---- Filter bar + level select + Export/Clear (engine-owned, real) ----
+    var filterInput = view.querySelector('input[placeholder*="Filter"]');
+    if (filterInput) {
+      filterInput.setAttribute('data-wired', '1');
+      filterInput.addEventListener('input', function () {
+        var raw = (filterInput.value || '').trim();
+        var m = raw.match(/^\/(.*)\/$/);   // /regex/ → regex; otherwise substring
+        if (m) { filterRegex = true; filterText = m[1]; }
+        else { filterRegex = false; filterText = raw; }
+        renderLines(buffer);
+      });
+    }
+    var levelSelect = view.querySelector('select');
+    if (levelSelect) {
+      levelSelect.addEventListener('change', function () {
+        var v = (levelSelect.value || '').toLowerCase();
+        if (v.indexOf('error') === 0) filterLevels = new Set(['err']);
+        else if (v.indexOf('warn') === 0) filterLevels = new Set(['warn', 'err']);
+        else filterLevels = null;          // "All levels" / "Info & above"
+        renderLines(buffer);
+      });
+    }
+
+    function exportFiltered() {
+      var visible = buffer.filter(passesFilter);
+      if (!visible.length) { D.toast('Nothing to export — buffer is empty or fully filtered out'); return; }
+      var text = visible.map(function (l) { return l.raw != null ? l.raw : l.msg; }).join('\n');
+      var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      downloadFile('log-filtered-' + ts + '.txt', 'text/plain', text);
+      D.toast('Exported ' + visible.length + ' filtered line' + (visible.length === 1 ? '' : 's'));
+    }
+    claim('#view-log-tail', 'Export filtered', exportFiltered);
+
+    // Clear icon (card-header icon-btn [1]) — truncate the real buffer.
+    var logHeaderIcons = view.querySelectorAll('.card-header .icon-btn');
+    if (logHeaderIcons[1]) {
+      logHeaderIcons[1].setAttribute('data-wired', '1');
+      logHeaderIcons[1].addEventListener('click', function () {
+        D.confirmAction('Clear log view?', 'This empties the in-memory buffer. If you are tailing live, new lines will keep appearing.', function () {
+          resetBuffer([]);
+          D.toast('Log buffer cleared');
+        });
+      });
+    }
 
     return {
       handleFile: handleFile,

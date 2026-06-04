@@ -87,20 +87,12 @@
     }
     D.toast(D.state.tailPaused ? 'Tail paused' : 'Tail resumed');
   });
-  D.bindByText('#view-log-tail', 'Export filtered', function () { D.toast('Exported 168 filtered lines'); });
+  // 'Export filtered' and the filter input + level select are wired by
+  // features.js, which filters the real in-memory buffer (this earlier version
+  // toggled mock .term-line nodes that renderLines() wipes on every redraw).
 
-  var logFilter = document.querySelector('#view-log-tail input[placeholder*="Filter"]');
-  if (logFilter) {
-    logFilter.addEventListener('input', function () {
-      var q = logFilter.value.toLowerCase().trim();
-      document.querySelectorAll('#view-log-tail .term-line').forEach(function (line) {
-        var match = !q || line.textContent.toLowerCase().indexOf(q) !== -1;
-        line.style.display = match ? '' : 'none';
-      });
-    });
-  }
-
-  // Card-header icons in Log-Tail: [0]=wrap, [1]=clear.
+  // Card-header icons in Log-Tail: [0]=wrap (here), [1]=clear (wired by features.js
+  // so it truncates the real engine buffer rather than hiding mock nodes).
   var logIcons = document.querySelectorAll('#view-log-tail .card-header .icon-btn');
   if (logIcons[0]) {
     logIcons[0].addEventListener('click', function () {
@@ -112,18 +104,6 @@
         l.style.whiteSpace = wrap ? '' : 'pre-wrap';
       });
       D.toast(wrap ? 'Lines no longer wrapped' : 'Lines wrapped to width');
-    });
-  }
-  if (logIcons[1]) {
-    logIcons[1].addEventListener('click', function () {
-      D.confirmAction(
-        'Clear log view?',
-        'This hides all currently buffered lines. New incoming lines will continue to appear.',
-        function () {
-          document.querySelectorAll('#view-log-tail .term-line').forEach(function (l) { l.style.display = 'none'; });
-          D.toast('Log view cleared');
-        }
-      );
     });
   }
 

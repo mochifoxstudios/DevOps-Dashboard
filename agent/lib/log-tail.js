@@ -8,6 +8,16 @@ const fs = require('fs');
 const path = require('path');
 const chokidar = require('chokidar');
 
+/* The log-tail endpoints route through withinWorkspace() for the boundary check,
+   but that alone would let them read ANY file in the workspace (.env, source,
+   keystore). Gate them to log-shaped extensions as well. */
+const DEFAULT_LOG_EXTS = ['.log', '.txt', '.out', '.err'];
+function isLogPath(filePath, exts) {
+  const allowed = (exts && exts.length ? exts : DEFAULT_LOG_EXTS).map((e) => e.toLowerCase());
+  const lower = String(filePath).toLowerCase();
+  return allowed.some((e) => lower.endsWith(e));
+}
+
 /* Read up to `maxBytes` from the END of the file. Drops the first partial
    line if we didn't read from the start, so callers always get clean lines. */
 async function readLastBytes(filePath, maxBytes) {
@@ -190,4 +200,4 @@ class LogStream {
   }
 }
 
-module.exports = { LogStream, readLastBytes, findLogFiles };
+module.exports = { LogStream, readLastBytes, findLogFiles, isLogPath, DEFAULT_LOG_EXTS };

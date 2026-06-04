@@ -34,6 +34,8 @@ const EXTRA_REDACT = process.env.EXTRA_REDACT_PATTERNS || '';
 const SCRAPER_ALLOWED_HOSTS = process.env.SCRAPER_ALLOWED_HOSTS || '';
 const SCRAPER_ALLOW_ANY = process.env.SCRAPER_ALLOW_ANY === 'true';
 const REGISTRY_LOOKUP_ENABLED = process.env.REGISTRY_LOOKUP_ENABLED !== 'false';
+const LOG_TAIL_EXTS = (process.env.LOG_TAIL_EXTENSIONS || '')
+  .split(',').map((s) => s.trim()).filter(Boolean);
 
 let WORKSPACE_ROOT;
 try {
@@ -130,6 +132,9 @@ app.get('/api/log-tail/find', wrap(async (req, res) => {
 // GET /api/log-tail/file?path=...&bytes=65536 — initial backfill (last N bytes).
 app.get('/api/log-tail/file', wrap(async (req, res) => {
   const resolved = withinWorkspace(WORKSPACE_ROOT, req.query.path || '');
+  if (!logTail.isLogPath(resolved, LOG_TAIL_EXTS)) {
+    return res.status(403).json({ error: 'Only log-shaped files (.log/.txt/.out/.err) may be read' });
+  }
   const bytes = parseInt(req.query.bytes, 10) || 64 * 1024;
   const result = await logTail.readLastBytes(resolved, bytes);
   res.json({ path: resolved, ...result });
@@ -143,6 +148,9 @@ app.get('/api/log-tail/stream', (req, res) => {
     resolved = withinWorkspace(WORKSPACE_ROOT, req.query.path || '');
   } catch (err) {
     return res.status(err.statusCode || 400).json({ error: err.message });
+  }
+  if (!logTail.isLogPath(resolved, LOG_TAIL_EXTS)) {
+    return res.status(403).json({ error: 'Only log-shaped files (.log/.txt/.out/.err) may be streamed' });
   }
 
   // SSE handshake — flush headers immediately so the client confirms the connection.

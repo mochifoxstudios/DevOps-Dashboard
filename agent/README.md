@@ -299,7 +299,8 @@ All four pass on Windows · Node 24 · git 2.x.
 - **All prompts pass through `lib/llm/redact.js`** before any adapter sees them. The audit record stores `redactionSummary` (counts only) — not plaintext.
 - **Outbound LLM endpoint allowlist** via `LLM_ENDPOINT_ALLOWLIST`. Hostnames outside it are refused before the adapter dials.
 - **No prompt plaintexts persisted.** Only `promptHash`, `promptBytes`, `redactionSummary` go to the audit log.
-- **Hash-chained audit log.** `GET /api/agent/audit/verify` walks the chain across rotated files; reports the first id where the chain breaks.
+- **Hash-chained audit log.** `GET /api/agent/audit/verify` walks the chain across rotated files; reports the first id where the chain breaks. This produces a machine-local, tamper-evident record of every AI/GitHub action — usable as *evidence* toward EU AI Act Article 12 record-keeping and ISO/IEC 42001 practices (it produces evidence; it does not by itself certify compliance). The integrity guarantee is internal-consistency only — see the signed-log note below.
+- **Integrity vs. authenticity (honest caveat).** The hash chain proves the log hasn't been *internally* altered, but anyone who can read `agent/` can recompute the whole chain after editing a record. Externally-verifiable signing (Ed25519 per segment) is planned; until then, treat the chain as integrity-within-this-host, not proof against a local attacker.
 
 ### Smoke tests (Phase 5)
 

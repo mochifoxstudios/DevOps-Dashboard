@@ -1,6 +1,6 @@
 # DevOps Local — Operations Dashboard
 
-A self-contained developer console you run on your own machine. Five tools (Context-Snap, Quick-Docs Scraper, Dependency Map, Log-Tail Filter, Issue Template Filler) for the small, recurring tasks that interrupt a developer's flow. No cloud account, no telemetry, no build step — just static files plus an optional Node "agent" process that adds live system access and a background **Autonomous Brain**.
+A **local-first** developer-ops console that runs entirely on your own machine — no cloud account, no telemetry, no build step. Its optional background **Autonomous Brain** watches your workspace and triages errors with a pluggable **local or remote LLM** (Ollama / OpenAI / Anthropic / Bedrock), and **every AI and GitHub action it takes is written to a hash-chained, tamper-evident audit log**. That ledger is the point: it produces the kind of verifiable record-keeping evidence that **regulated and air-gapped teams** need — for example, evidence to support **EU AI Act Article 12** record-keeping and **ISO/IEC 42001** AI-management practices. (It *produces audit evidence*; it does not by itself make you compliant.) On top of that foundation it bundles five everyday developer tools — Context-Snap, Quick-Docs Scraper, Dependency Map, Log-Tail Filter, Issue Template Filler — so the small recurring tasks stay on your machine too.
 
 ---
 
@@ -73,6 +73,10 @@ Small developer-ops tasks break flow. You're mid-feature and you need to remembe
 This dashboard puts those tasks behind one local UI. **Everything stays on your machine** — there is no remote service, no API key, no telemetry. The optional Node agent runs as a single process bound to one workspace root, with strict path validation and a "destructive operations disabled by default" posture.
 
 The dashboard ships **empty** on first launch: zero snapshots, zero workspaces, zero saved data, no profile. Every number on screen represents something you actually did. There is no demo data baked in.
+
+### Compliance evidence (regulated & air-gapped teams)
+
+Most "AI ops" tooling phones home to a cloud control plane — a non-starter where data can't leave the building. DevOps Local inverts that: the LLM can be a **local Ollama model**, registry/scraper egress can be switched off, and the Brain's every action lands in a **hash-chained audit log** you can verify (`Settings → Audit Log → Verify chain`) and export as JSONL/CSV. That gives you a defensible, machine-local record of what the AI did and when — useful as **evidence** toward **EU AI Act Article 12** record-keeping (enforcement of the relevant obligations begins **2 Aug 2026**) and **ISO/IEC 42001** AI-management practices. To be explicit: this tool *produces audit evidence and runs without egress*; it does not certify you as compliant, and you should pair it with your own controls and review.
 
 ---
 

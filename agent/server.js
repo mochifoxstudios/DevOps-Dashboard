@@ -16,6 +16,7 @@ const cors = require('cors');
 const path = require('path');
 
 const { resolveWorkspaceRoot, withinWorkspace } = require('./lib/safety');
+const { resolveStateDir } = require('./lib/state-dir');
 const ctx = require('./lib/context-snap');
 const logTail = require('./lib/log-tail');
 const depRegistry = require('./lib/dep-registry');
@@ -271,12 +272,12 @@ app.get('/api/scraper/config', (req, res) => {
 });
 
 // ---- Phase 5: LLM + Audit + Keystore ----
-const AGENT_STATE_DIR = path.resolve(__dirname);
+const AGENT_STATE_DIR = resolveStateDir();
 const audit = new Audit({ dir: AGENT_STATE_DIR, keep: parseInt(process.env.AUDIT_KEEP || '10', 10) });
 const keystore = new Keystore({ dir: AGENT_STATE_DIR, workspaceRoot: WORKSPACE_ROOT });
 
 // ---- Phase 4: Autonomous Brain ----
-const brain = new Brain({ workspaceRoot: WORKSPACE_ROOT, extraRedact: EXTRA_REDACT });
+const brain = new Brain({ workspaceRoot: WORKSPACE_ROOT, extraRedact: EXTRA_REDACT, stateDir: AGENT_STATE_DIR });
 brain.addSentinel(new GitSentinel(brain,      { workspaceRoot: WORKSPACE_ROOT }));
 brain.addSentinel(new LogWatchdog(brain,      { workspaceRoot: WORKSPACE_ROOT }));
 brain.addSentinel(new Scheduler(brain,        { workspaceRoot: WORKSPACE_ROOT }));
@@ -562,24 +563,41 @@ app.use('/api', (req, res) => {
   res.status(404).json({ error: 'Unknown endpoint: ' + req.path });
 });
 
-const server = app.listen(PORT, HOST, () => {
-  const banner =
+// EADDRINUSE-resilient listen: if the configured port is taken (common on a
+// second launch), fall back to an ephemeral port instead of crashing silently.
+let server;
+function startServer(port, fallback) {
+  server = app.listen(port, HOST, () => {
+    const p = server.address().port;
+    const banner =
 `────────────────────────────────────────────────────────────────
- DevOps Local Agent v${VERSION}
- Listening on http://localhost:${PORT}
- Bind:        ${HOST}:${PORT}${HOST === '0.0.0.0' ? '  (⚠ all interfaces — exposed to your LAN)' : ''}
+ DevOps Local Agent v${VERSION}${fallback ? '  (fallback — port ' + PORT + ' was busy)' : ''}
+ Listening on http://localhost:${p}
+ Bind:        ${HOST}:${p}${HOST === '0.0.0.0' ? '  (⚠ all interfaces — exposed to your LAN)' : ''}
  Workspace:   ${WORKSPACE_ROOT}
+ State dir:   ${AGENT_STATE_DIR}
  Destructive: ${ALLOW_DESTRUCTIVE ? 'ALLOWED (with X-Confirm-Destructive: yes)' : 'BLOCKED'}
- Frontend:    http://localhost:${PORT}/
- Health:      http://localhost:${PORT}/api/health
- Brain:       http://localhost:${PORT}/api/agent/status
+ Frontend:    http://localhost:${p}/
+ Health:      http://localhost:${p}/api/health
+ Brain:       http://localhost:${p}/api/agent/status
 ────────────────────────────────────────────────────────────────`;
-  console.log(banner);
+    console.log(banner);
 
-  // Start the Brain after the HTTP server is listening so a slow sentinel
-  // startup doesn't block requests.
-  brain.start().catch((err) => console.error('[brain] startup failed:', err.message));
-});
+    // Start the Brain after the HTTP server is listening so a slow sentinel
+    // startup doesn't block requests.
+    brain.start().catch((err) => console.error('[brain] startup failed:', err.message));
+  });
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE' && !fallback) {
+      console.error(`[agent] port ${port} is in use — retrying on an ephemeral port…`);
+      startServer(0, true);
+    } else {
+      console.error('[agent] server error:', err.message);
+      process.exit(1);
+    }
+  });
+}
+startServer(PORT, false);
 
 // Graceful shutdown — stop sentinels first so chokidar watchers release files.
 async function shutdown(signal) {

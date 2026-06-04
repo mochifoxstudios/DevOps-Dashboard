@@ -31,6 +31,9 @@ class Brain {
   constructor(opts = {}) {
     this.workspaceRoot = opts.workspaceRoot;
     this.extraRedact = opts.extraRedact || '';
+    // State file location: honor a caller-provided state dir (AGENT_STATE_DIR),
+    // else fall back to the agent root next to source (v1.0 layout).
+    this.stateFile = opts.stateDir ? path.join(opts.stateDir, '.brain-state.json') : STATE_FILE;
     this.startedAt = new Date().toISOString();
     this.events = [];
     this.recentSnapshots = [];
@@ -210,7 +213,7 @@ class Brain {
 
   _loadState() {
     try {
-      const raw = fs.readFileSync(STATE_FILE, 'utf8');
+      const raw = fs.readFileSync(this.stateFile, 'utf8');
       const state = JSON.parse(raw);
       if (state.settings) Object.assign(this.settings, state.settings);
       this.snapshotSeq = state.snapshotSeq || 0;
@@ -224,7 +227,7 @@ class Brain {
 
   _saveState() {
     try {
-      fs.writeFileSync(STATE_FILE, JSON.stringify({
+      fs.writeFileSync(this.stateFile, JSON.stringify({
         settings: this.settings,
         snapshotSeq: this.snapshotSeq,
         draftSeq: this.draftSeq,

@@ -805,21 +805,7 @@ dirty         = <span class="code-string">true</span>  <span class="code-comment
           </div>
           <div class="card-body" style="padding: 0;">
             <div class="terminal" style="border: 0; border-radius: 0; max-height: 460px;">
-              <div class="term-line"><span class="ts">14:22:08.114</span><span class="lvl info">INFO</span><span class="msg">server listening on :3000 · pid 48211 · env=development</span></div>
-              <div class="term-line"><span class="ts">14:22:08.221</span><span class="lvl info">INFO</span><span class="msg">prisma · connected to postgres://localhost:5432/payments_dev</span></div>
-              <div class="term-line"><span class="ts">14:22:09.402</span><span class="lvl ok  ">OK  </span><span class="msg">worker[high] consumed job#9123 · charge.refund · 184ms</span></div>
-              <div class="term-line"><span class="ts">14:22:11.018</span><span class="lvl info">INFO</span><span class="msg">POST /v1/charges → 200 · 86ms · user_2P9f… · req_b3c1d</span></div>
-              <div class="term-line"><span class="ts">14:22:12.554</span><span class="lvl warn">WARN</span><span class="msg">rate-limit · 84/100 req/min for tenant=acme · throttle in 16s</span></div>
-              <div class="term-line err-row"><span class="ts">14:22:13.041</span><span class="lvl err ">ERROR</span><span class="msg">stripe-webhook · signature mismatch · expected whsec_… got whsec_b1…</span></div>
-              <div class="term-line"><span class="ts">14:22:13.802</span><span class="lvl info">INFO</span><span class="msg">POST /v1/checkout/sessions → 201 · 132ms · req_b3c1f</span></div>
-              <div class="term-line err-row"><span class="ts">14:22:14.366</span><span class="lvl err ">ERROR</span><span class="msg">db.query timeout after 5000ms · SELECT * FROM ledger WHERE tenant_id=$1 · pool exhausted (20/20)</span></div>
-              <div class="term-line"><span class="ts">14:22:14.901</span><span class="lvl warn">WARN</span><span class="msg">pool · waiting for connection · queue depth=7 · oldest 412ms</span></div>
-              <div class="term-line"><span class="ts">14:22:15.514</span><span class="lvl info">INFO</span><span class="msg">GET /healthz → 200 · 4ms</span></div>
-              <div class="term-line"><span class="ts">14:22:16.227</span><span class="lvl ok  ">OK  </span><span class="msg">worker[low] consumed job#9124 · email.receipt · 612ms</span></div>
-              <div class="term-line err-row"><span class="ts">14:22:16.881</span><span class="lvl err ">ERROR</span><span class="msg">payment_intent.failed · card_declined · req_b3c20 · tenant=acme · amount=2499 usd</span></div>
-              <div class="term-line"><span class="ts">14:22:17.342</span><span class="lvl info">INFO</span><span class="msg">POST /v1/payment_intents → 201 · 218ms · req_b3c21</span></div>
-              <div class="term-line"><span class="ts">14:22:18.011</span><span class="lvl info">INFO</span><span class="msg">cron · expired-sessions-sweep · removed 14 rows · 27ms</span></div>
-              <div class="term-line"><span class="ts">14:22:18.604</span><span class="lvl warn">WARN</span><span class="msg">deprecated · `email.send_v1` will be removed in v3 · use `email.dispatch`</span></div>
+              <div class="term-line"><span class="msg" style="color: var(--text-meta);">No log loaded. Drop a <code>.log</code> file here, click <strong>Load…</strong>, or use <strong>Tail live</strong> (Mode 3) to stream a workspace log in real time.</span></div>
             </div>
           </div>
         </div>

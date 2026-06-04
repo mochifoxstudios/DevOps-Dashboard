@@ -367,14 +367,17 @@
       D.toast('Exported · ' + snap.name + '.snap.json');
     }
 
-    // Hydrate snapshot count on load
-    var existing = loadList(STORE_KEY.snapshots);
-    if (existing.length) {
-      D.state.capturedSnapshotCount = existing[0].seq || existing.length;
-      var stat = view.querySelector('.stats .stat-value');
-      if (stat) stat.textContent = D.state.capturedSnapshotCount;
-      renderToCapturedPane(existing[0]);
-    }
+    // Hydrate snapshot count on load. Wrapped so a single corrupt snapshot in
+    // localStorage can't throw and abort the whole features.js bootstrap.
+    try {
+      var existing = loadList(STORE_KEY.snapshots);
+      if (existing.length) {
+        D.state.capturedSnapshotCount = existing[0].seq || existing.length;
+        var stat = view.querySelector('.stats .stat-value');
+        if (stat) stat.textContent = D.state.capturedSnapshotCount;
+        renderToCapturedPane(existing[0]);
+      }
+    } catch (e) { /* corrupt snapshot — skip hydration, keep the tool usable */ }
 
     // Drag-drop a previously-exported snapshot to restore it
     wireDropTarget(view, '.snap.json,.json', function (file) {
@@ -1412,30 +1415,30 @@
     host.style.cssText = 'margin-top:16px;border-top:1px solid var(--border);padding-top:14px;';
     view.appendChild(host);
 
-    function render() {
-      var list = D.store.get('devops:issue-drafts', []);
-      if (!list.length) { host.innerHTML = ''; return; }
-      host.innerHTML =
-        '<div class="card-title" style="margin-bottom:8px;"><span class="dot"></span>DRAFTS INBOX (' + list.length + ')</div>' +
-        list.slice(0, 8).map(function (d) {
-          var status = d.enriched ? '<span class="badge ok">enriched</span>' : '<span class="badge warn">bare</span>';
-          var filed = d.filedAs ? '<a class="badge indigo" href="' + d.filedAs.url + '" target="_blank" rel="noopener">filed</a>' : '';
-          return '<div data-draft-row data-id="' + D.escapeHtml(d.id) + '" style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">' +
-            '<div style="flex:1;min-width:0;">' +
-              '<div style="font-weight:500;">' + D.escapeHtml(d.title || d.name) + '</div>' +
-              '<div style="font-size:11px;color:var(--text-meta);">' + new Date(d.when).toLocaleString() + '</div>' +
-            '</div>' +
-            status + filed +
-            (d.enriched ? '' : '<button class="btn" data-enrich data-id="' + D.escapeHtml(d.id) + '">✨ Enrich</button>') +
-            '<button class="btn" data-file-gh data-id="' + D.escapeHtml(d.id) + '">File on GitHub</button>' +
-          '</div>';
-        }).join('');
+    var filterText = '';
+    // Only render http(s) links; a draft URL could in principle be hostile.
+    function safeUrl(u) { return /^https?:\/\//i.test(u || '') ? D.escapeHtml(u) : '#'; }
 
-      host.querySelectorAll('[data-enrich]').forEach(function (b) {
+    function rowHtml(d) {
+      var status = d.enriched ? '<span class="badge ok">enriched</span>' : '<span class="badge warn">bare</span>';
+      var filed = d.filedAs ? '<a class="badge indigo" href="' + safeUrl(d.filedAs.url) + '" target="_blank" rel="noopener">filed</a>' : '';
+      return '<div data-draft-row data-id="' + D.escapeHtml(d.id) + '" style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-weight:500;">' + D.escapeHtml(d.title || d.name) + '</div>' +
+          '<div style="font-size:11px;color:var(--text-meta);">' + new Date(d.when).toLocaleString() + '</div>' +
+        '</div>' +
+        status + filed +
+        (d.enriched ? '' : '<button class="btn" data-enrich data-id="' + D.escapeHtml(d.id) + '">✨ Enrich</button>') +
+        '<button class="btn" data-file-gh data-id="' + D.escapeHtml(d.id) + '">File on GitHub</button>' +
+      '</div>';
+    }
+
+    function wireRowButtons(scope) {
+      scope.querySelectorAll('[data-enrich]').forEach(function (b) {
         b.addEventListener('click', function () {
           var id = b.getAttribute('data-id');
           if (D.brain && D.brain.online) {
-            fetch((D.agent.base || '') + '/api/agent/enrich-draft', {
+            fetch(((D.agent && D.agent.base) || '') + '/api/agent/enrich-draft', {
               method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: id })
             }).then(function (r) { return r.json(); }).then(function (j) {
               D.toast(j.error ? ('Enrich failed: ' + j.error) : 'Enrichment queued');
@@ -1443,16 +1446,44 @@
           } else { D.toast('Agent offline — cannot enrich'); }
         });
       });
-      host.querySelectorAll('[data-file-gh]').forEach(function (b) {
+      scope.querySelectorAll('[data-file-gh]').forEach(function (b) {
         b.addEventListener('click', function () {
           if (D.brain && typeof D.brain.openFileModal === 'function') D.brain.openFileModal(b.getAttribute('data-id'));
           else D.toast('Agent offline — cannot file');
         });
       });
     }
-    render();
-    document.addEventListener('devops:draft-changed', render);
-    setInterval(render, 5000);
+
+    // Build the shell once so the search box keeps focus across re-renders.
+    host.innerHTML =
+      '<div class="row" data-draft-head style="justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+        '<div class="card-title"><span class="dot"></span>DRAFTS INBOX (<span data-draft-count>0</span>)</div>' +
+        '<input class="input" data-draft-search type="text" placeholder="Search drafts…" style="max-width:200px;" />' +
+      '</div>' +
+      '<div data-draft-list></div>';
+    var search = host.querySelector('[data-draft-search]');
+    if (search) search.addEventListener('input', function () { filterText = search.value; renderList(); });
+
+    function renderList() {
+      var listEl = host.querySelector('[data-draft-list]');
+      var countEl = host.querySelector('[data-draft-count]');
+      var head = host.querySelector('[data-draft-head]');
+      if (!listEl) return;
+      var list = D.store.get('devops:issue-drafts', []);
+      if (countEl) countEl.textContent = list.length;
+      if (head) head.style.display = list.length ? '' : 'none';
+      if (!list.length) {
+        listEl.innerHTML = '<div class="empty-state es-sub" style="padding:6px 0;">No issue drafts yet — fill the form above and click <strong>File issue</strong>, or let the Brain pin one from a watched log.</div>';
+        return;
+      }
+      var q = filterText.toLowerCase().trim();
+      var shown = list.filter(function (d) { return !q || (((d.title || d.name || '') + ' ' + (d.content || '')).toLowerCase().indexOf(q) !== -1); });
+      listEl.innerHTML = shown.length ? shown.slice(0, 12).map(rowHtml).join('') : '<div class="empty-state es-sub" style="padding:6px 0;">No drafts match "' + D.escapeHtml(filterText) + '".</div>';
+      wireRowButtons(listEl);
+    }
+
+    renderList();
+    document.addEventListener('devops:draft-changed', renderList);
   })();
 
   // -- Surface a tiny global "Features ready" indicator into the sidebar --

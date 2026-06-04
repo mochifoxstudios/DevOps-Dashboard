@@ -1301,6 +1301,16 @@ new <span class="code-key">whsec_…</span> during a <span class="code-num">5 mi
               <div class="card">
                 <div class="row-item">
                   <div class="row-meta">
+                    <div class="row-title">Backup &amp; migrate</div>
+                    <div class="row-sub">Export every dashboard setting, workspace, snapshot, and draft to one <span class="md-code-inline">.dvops.json</span> file — or restore from one. Fully local; ideal for moving machines or archiving a project's working context.</div>
+                  </div>
+                  <div class="row-control row" style="gap: 8px;">
+                    <button class="btn" data-bundle-export>Export backup</button>
+                    <button class="btn" data-bundle-import>Import backup…</button>
+                  </div>
+                </div>
+                <div class="row-item">
+                  <div class="row-meta">
                     <div class="row-title">Local data directory</div>
                     <div class="row-sub" style="font-family: var(--font-mono);">~/.devops-local · 18.4 MB used · 142 docs · 14 snapshots</div>
                   </div>
@@ -2622,6 +2632,7 @@ level:error AND "pool exhausted"</div>
 
 <script src="js/core.js"></script>
 <script src="js/log-engine.js"></script>
+<script src="js/bundle.js"></script>
 <script src="js/agent-client.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/persist.js"></script>
@@ -2629,5 +2640,6 @@ level:error AND "pool exhausted"</div>
 <script src="js/tools.js"></script>
 <script src="js/brain-client.js"></script>
 <script src="js/audit-ui.js"></script>
+<script src="js/bundle-ui.js"></script>
 </body>
 </html>

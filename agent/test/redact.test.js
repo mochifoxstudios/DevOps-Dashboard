@@ -2,10 +2,18 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { redact, makeRedactor } = require('../lib/llm/redact');
 
-test('scrubs default secret patterns', () => {
+test('counts env-var-shaped secrets under envVarsScrubbed', () => {
   const out = redact('NODE_ENV=production STRIPE_API_KEY=sk_live_abc123');
   assert.ok(!out.text.includes('sk_live_abc123'));
-  assert.equal(out.summary.secretsFound, 1);
+  assert.equal(out.summary.envVarsScrubbed, 1);
+  assert.equal(out.summary.secretsFound, 0);
+});
+
+test('counts known token formats under secretsFound', () => {
+  const out = redact('token ghp_0123456789abcdefABCD and key AKIAIOSFODNN7EXAMPLE');
+  assert.ok(!out.text.includes('ghp_0123456789abcdefABCD'));
+  assert.ok(!out.text.includes('AKIAIOSFODNN7EXAMPLE'));
+  assert.equal(out.summary.secretsFound, 2);
 });
 
 test('scrubs IPv4 addresses', () => {

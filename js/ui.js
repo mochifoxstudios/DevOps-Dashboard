@@ -417,9 +417,9 @@
     { id: 'issue-filler', title: 'Open Issue Template Filler', cat: 'Navigate', keys: ['⌘','5'], icon: '<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>', run: function () { D.activate('issue-filler'); } },
     { id: 'settings', title: 'Open Settings', cat: 'Navigate', keys: ['⌘',','], icon: '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/>', run: function () { D.activate('settings'); } },
     { id: 'help', title: 'Open Help & Shortcuts', cat: 'Navigate', keys: ['?'], icon: '<circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>', run: function () { D.activate('help'); } },
-    { id: 'snapshot', title: 'Capture snapshot now', cat: 'Action', keys: ['⌘','⇧','S'], icon: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8"/><path d="M12 8v8"/>', run: function () { D.activate('context-snap'); D.toast('Snapshot captured'); } },
-    { id: 'pause-tail', title: 'Pause log tail', cat: 'Action', keys: ['␣'], icon: '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>', run: function () { D.activate('log-tail'); D.toast('Tail paused'); } },
-    { id: 'pause-agent', title: 'Pause autonomous agent', cat: 'Action', keys: ['⌘','⇧','P'], icon: '<circle cx="12" cy="12" r="9"/><rect x="9" y="9" width="2" height="6"/><rect x="13" y="9" width="2" height="6"/>', run: function () { D.toast('Agent paused'); } },
+    { id: 'snapshot', title: 'Capture snapshot now', cat: 'Action', keys: ['⌘','⇧','S'], icon: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8"/><path d="M12 8v8"/>', run: function () { D.activate('context-snap'); if (D.features && D.features.contextSnap) D.features.contextSnap.capture(); else D.toast('Snapshot captured'); } },
+    { id: 'pause-tail', title: 'Pause / resume log tail', cat: 'Action', keys: ['␣'], icon: '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>', run: function () { D.activate('log-tail'); var pb = Array.prototype.find.call(document.querySelectorAll('#view-log-tail .btn'), function (b) { return /Pause tail|Resume tail/.test(b.textContent); }); if (pb) pb.click(); } },
+    { id: 'pause-agent', title: 'Autonomous agent settings', cat: 'Action', keys: ['⌘','⇧','P'], icon: '<circle cx="12" cy="12" r="9"/><rect x="9" y="9" width="2" height="6"/><rect x="13" y="9" width="2" height="6"/>', run: function () { D.activate('settings'); setTimeout(function () { D.scrollSettingsTo('s-agent'); D.setActiveRailItem('s-agent'); }, 50); } },
     { id: 'profile', title: 'Edit profile', cat: 'Action', icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>', run: D.openProfile },
     { id: 'sign-out', title: 'Sign out / lock workspace', cat: 'Action', keys: ['⌘','⇧','L'], icon: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>', run: D.showLogin },
     { id: 'set-agent', title: 'Settings → Autonomous Agent', cat: 'Settings', icon: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2"/>', run: function () { D.activate('settings'); setTimeout(function () { D.scrollSettingsTo('s-agent'); D.setActiveRailItem('s-agent'); }, 50); } },
@@ -427,7 +427,13 @@
     { id: 'set-storage', title: 'Settings → Storage & Retention', cat: 'Settings', icon: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>', run: function () { D.activate('settings'); setTimeout(function () { D.scrollSettingsTo('s-storage'); D.setActiveRailItem('s-storage'); }, 50); } },
     { id: 'set-network', title: 'Settings → Network Isolation', cat: 'Settings', icon: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/>', run: function () { D.activate('settings'); setTimeout(function () { D.scrollSettingsTo('s-network'); D.setActiveRailItem('s-network'); }, 50); } },
     { id: 'set-security', title: 'Settings → Local Security', cat: 'Settings', icon: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>', run: function () { D.activate('settings'); setTimeout(function () { D.scrollSettingsTo('s-security'); D.setActiveRailItem('s-security'); }, 50); } },
-    { id: 'set-appearance', title: 'Settings → Appearance', cat: 'Settings', icon: '<circle cx="12" cy="12" r="4"/>', run: function () { D.activate('settings'); setTimeout(function () { D.scrollSettingsTo('s-appearance'); D.setActiveRailItem('s-appearance'); }, 50); } }
+    { id: 'set-appearance', title: 'Settings → Appearance', cat: 'Settings', icon: '<circle cx="12" cy="12" r="4"/>', run: function () { D.activate('settings'); setTimeout(function () { D.scrollSettingsTo('s-appearance'); D.setActiveRailItem('s-appearance'); }, 50); } },
+    { id: 'rescan-deps', title: 'Re-scan dependencies', cat: 'Action', icon: '<path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>', run: function () { D.activate('dep-map'); if (D.features && D.features.depMap) D.features.depMap.rescan(); } },
+    { id: 'export-snapshot', title: 'Export latest snapshot', cat: 'Action', icon: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>', run: function () { if (D.features && D.features.contextSnap) D.features.contextSnap.exportCurrent(); } },
+    { id: 'compare-snapshot', title: 'Compare snapshots', cat: 'Action', icon: '<rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/>', run: function () { D.activate('context-snap'); var b = document.querySelector('[data-snap-compare]'); if (b) b.click(); } },
+    { id: 'file-issue', title: 'File issue from form', cat: 'Action', icon: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>', run: function () { D.activate('issue-filler'); if (D.features && D.features.issueFiller) D.features.issueFiller.fileIssue(); } },
+    { id: 'run-scan', title: 'Run scheduled scan now', cat: 'Action', icon: '<circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>', run: function () { if (D.agent && D.agent.online) { fetch((D.agent.base || '') + '/api/agent/scan', { method: 'POST' }).then(function (r) { return r.json(); }).then(function () { D.toast('Scheduled scan complete'); }).catch(function () { D.toast('Scan failed'); }); } else { D.toast('Agent offline — start it to scan'); } } },
+    { id: 'verify-audit', title: 'Verify audit chain', cat: 'Action', icon: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>', run: function () { D.activate('settings'); setTimeout(function () { D.scrollSettingsTo('s-audit'); D.setActiveRailItem('s-audit'); if (D.auditUI) D.auditUI.verify(); }, 60); } }
   ];
 
   D.openPalette = function () {
@@ -512,6 +518,9 @@
 
   // --------- Global keyboard shortcuts ---------
   document.addEventListener('keydown', function (e) {
+    // Respect the Settings → Keyboard "shortcuts enabled" toggle. Escape always
+    // works (so modals/palette can always be dismissed).
+    if (!D.state.shortcutsEnabled && e.key !== 'Escape') return;
     // ⌘1..5 → tool views
     if ((e.metaKey || e.ctrlKey) && /^[1-5]$/.test(e.key)) {
       e.preventDefault();

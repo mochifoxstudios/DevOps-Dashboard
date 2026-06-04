@@ -529,8 +529,13 @@
       return;
     }
     if (e.key === 'Escape') {
-      if (profileModal && profileModal.classList.contains('open')) D.closeProfile();
-      if (paletteBackdrop && paletteBackdrop.classList.contains('open')) D.closePalette();
+      // Close any open modal. Persistent modals (profile/palette) just lose
+      // .open; runtime-created modals (confirm / snapshot / compare / etc.) are
+      // removed. Previously Escape only handled profile + palette.
+      document.querySelectorAll('.modal-backdrop.open').forEach(function (m) {
+        if (m === profileModal || m === paletteBackdrop) m.classList.remove('open');
+        else m.remove();
+      });
       D.closeAllPopovers();
     }
     if ((e.metaKey || e.ctrlKey) && e.key === ',') { e.preventDefault(); D.activate('settings'); }

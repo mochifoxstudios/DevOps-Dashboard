@@ -1473,3 +1473,28 @@
   }
   .seg-btn:hover { color: var(--text-body); }
   .seg-btn.active { background: var(--bg-hover); color: var(--text-primary); }
+
+  /* ===== Accessibility (V1.00.1) ===== */
+  /* Visible keyboard focus on every interactive element. Mouse focus is left
+     alone (:focus:not(:focus-visible)) so this doesn't change click behavior. */
+  :focus-visible {
+    outline: 2px solid var(--accent-indigo);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  a:focus:not(:focus-visible),
+  button:focus:not(:focus-visible),
+  .btn:focus:not(:focus-visible),
+  .icon-btn:focus:not(:focus-visible),
+  .nav-item:focus:not(:focus-visible),
+  [tabindex]:focus:not(:focus-visible) { outline: none; }
+
+  /* Respect reduced-motion preferences (vestibular safety). */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }

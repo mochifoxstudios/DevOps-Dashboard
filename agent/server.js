@@ -36,6 +36,10 @@ const SCRAPER_ALLOW_ANY = process.env.SCRAPER_ALLOW_ANY === 'true';
 const REGISTRY_LOOKUP_ENABLED = process.env.REGISTRY_LOOKUP_ENABLED !== 'false';
 const LOG_TAIL_EXTS = (process.env.LOG_TAIL_EXTENSIONS || '')
   .split(',').map((s) => s.trim()).filter(Boolean);
+const HOST = process.env.HOST || '127.0.0.1';
+const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || '')
+  .split(',').map((s) => s.trim()).filter(Boolean);
+const isLocalhostOrigin = (o) => /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(o);
 
 let WORKSPACE_ROOT;
 try {
@@ -45,12 +49,29 @@ try {
   process.exit(1);
 }
 
+// If the agent's own directory is inside the watched workspace, its state files
+// (.ai-keys.json, .salt, .brain-state.json) live within the readable surface.
+if (__dirname === WORKSPACE_ROOT || (__dirname + path.sep).startsWith(WORKSPACE_ROOT + path.sep)) {
+  console.warn('[agent] WARNING: the agent directory is inside WORKSPACE_ROOT — point WORKSPACE_ROOT at your project so the agent\'s own state files stay outside the workspace it serves.');
+}
+
 const STATIC_ROOT = path.resolve(__dirname, '..');
 const VERSION = '1.0.0';
 const STARTED_AT = new Date().toISOString();
 
 const app = express();
-app.use(cors({ origin: true, credentials: true }));
+// Same-origin requests (the agent serves the dashboard) carry no Origin header
+// and are always allowed. Cross-origin requests are allowed only from localhost
+// (any port — covers Mode 2's python server) or an explicit CORS_ALLOWED_ORIGINS
+// entry. Remote origins get no ACAO header, so the browser blocks the response —
+// this stops any website you visit from driving your local agent.
+app.use(cors({
+  origin(origin, cb) {
+    if (!origin) return cb(null, true);
+    if (isLocalhostOrigin(origin) || CORS_ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    return cb(null, false);
+  }
+}));
 app.use(express.json({ limit: '256kb' }));
 
 // Lightweight request log — one line per request.
@@ -541,11 +562,12 @@ app.use('/api', (req, res) => {
   res.status(404).json({ error: 'Unknown endpoint: ' + req.path });
 });
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, HOST, () => {
   const banner =
 `────────────────────────────────────────────────────────────────
  DevOps Local Agent v${VERSION}
  Listening on http://localhost:${PORT}
+ Bind:        ${HOST}:${PORT}${HOST === '0.0.0.0' ? '  (⚠ all interfaces — exposed to your LAN)' : ''}
  Workspace:   ${WORKSPACE_ROOT}
  Destructive: ${ALLOW_DESTRUCTIVE ? 'ALLOWED (with X-Confirm-Destructive: yes)' : 'BLOCKED'}
  Frontend:    http://localhost:${PORT}/

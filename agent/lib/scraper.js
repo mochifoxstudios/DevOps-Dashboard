@@ -56,11 +56,12 @@ function isPrivateIPv6(ip) {
   return false;
 }
 
-async function assertPublicHost(host) {
+async function assertPublicHost(host, lookup) {
   // Resolve all A and AAAA records — if any one is private, refuse.
+  const doLookup = lookup || ((h) => dns.lookup(h, { all: true, family: 0 }));
   let records = [];
   try {
-    records = await dns.lookup(host, { all: true, family: 0 });
+    records = await doLookup(host);
   } catch (e) {
     const err = new Error('DNS lookup failed for ' + host + ': ' + e.message);
     err.statusCode = 502;
@@ -110,48 +111,56 @@ async function scrape(url, opts = {}) {
   if (u.protocol !== 'http:' && u.protocol !== 'https:') {
     throw Object.assign(new Error('Only http(s) URLs allowed'), { statusCode: 400 });
   }
-  if (!allowAny && !hostMatchesAllowlist(u.hostname, allowed)) {
-    throw Object.assign(
-      new Error(
-        'Host not in allowlist: ' + u.hostname +
-        '. Add it to SCRAPER_ALLOWED_HOSTS or set SCRAPER_ALLOW_ANY=true.'
-      ),
-      { statusCode: 403 }
-    );
-  }
-  await assertPublicHost(u.hostname);
-
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeoutMs);
-  let res;
-  try {
-    res = await fetch(u.toString(), {
-      method: 'GET',
-      redirect: 'follow',
-      signal: ctrl.signal,
-      headers: {
-        'User-Agent': opts.userAgent || DEFAULT_USER_AGENT,
-        'Accept': 'text/html,application/xhtml+xml,text/plain,text/markdown,application/json;q=0.9,*/*;q=0.5',
-        'Accept-Language': 'en-US,en;q=0.9'
-      }
-    });
-  } finally {
-    clearTimeout(t);
-  }
-
-  // After redirects, re-validate the final URL's host.
-  const finalUrl = res.url || u.toString();
-  let finalHost;
-  try { finalHost = new URL(finalUrl).hostname; } catch (_) { finalHost = u.hostname; }
-  if (finalHost !== u.hostname) {
-    if (!allowAny && !hostMatchesAllowlist(finalHost, allowed)) {
+  const _fetch = opts._fetch || fetch;
+  const _lookup = opts._lookup;
+  // Validate scheme + allowlist + SSRF for a single URL before we ever dial it.
+  const validateHop = async (urlStr) => {
+    const h = new URL(urlStr);
+    if (h.protocol !== 'http:' && h.protocol !== 'https:') {
+      throw Object.assign(new Error('Only http(s) URLs allowed'), { statusCode: 400 });
+    }
+    if (!allowAny && !hostMatchesAllowlist(h.hostname, allowed)) {
       throw Object.assign(
-        new Error('Redirect destination not in allowlist: ' + finalHost),
+        new Error('Host not in allowlist: ' + h.hostname +
+          '. Add it to SCRAPER_ALLOWED_HOSTS or set SCRAPER_ALLOW_ANY=true.'),
         { statusCode: 403 }
       );
     }
-    await assertPublicHost(finalHost);
+    await assertPublicHost(h.hostname, _lookup);
+  };
+
+  // Manual redirect handling: validate EVERY hop (including the initial URL and
+  // every Location) BEFORE following it. With redirect:'follow', Node would dial
+  // an internal redirect target before we could check it; redirect:'manual' lets
+  // us re-run the allowlist + SSRF guard on each Location first.
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  let res, currentUrl = u.toString(), hops = 0;
+  try {
+    while (true) {
+      await validateHop(currentUrl);
+      res = await _fetch(currentUrl, {
+        method: 'GET',
+        redirect: 'manual',
+        signal: ctrl.signal,
+        headers: {
+          'User-Agent': opts.userAgent || DEFAULT_USER_AGENT,
+          'Accept': 'text/html,application/xhtml+xml,text/plain,text/markdown,application/json;q=0.9,*/*;q=0.5',
+          'Accept-Language': 'en-US,en;q=0.9'
+        }
+      });
+      const loc = res.headers.get('location');
+      if ([301, 302, 303, 307, 308].includes(res.status) && loc) {
+        if (++hops > 5) throw Object.assign(new Error('Too many redirects'), { statusCode: 508 });
+        currentUrl = new URL(loc, currentUrl).toString();
+        continue;
+      }
+      break;
+    }
+  } finally {
+    clearTimeout(t);
   }
+  const finalUrl = currentUrl;
 
   if (!res.ok) {
     throw Object.assign(new Error('Upstream HTTP ' + res.status), { statusCode: 502 });

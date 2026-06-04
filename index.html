@@ -1014,6 +1014,10 @@ new <span class="code-key">whsec_…</span> during a <span class="code-num">5 mi
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               Local Security
             </button>
+            <button class="settings-rail-item" data-section="s-audit">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              Audit Log
+            </button>
             <button class="settings-rail-item" data-section="s-toolchain">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l-1 16"/><path d="M10 4l1 16"/><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/></svg>
               Local Toolchain
@@ -1475,6 +1479,41 @@ new <span class="code-key">whsec_…</span> during a <span class="code-num">5 mi
                   </div>
                   <div class="row-control">
                     <button class="btn">Rotate now</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- AUDIT LOG (Phase 5 tamper-evident compliance ledger) -->
+            <div class="settings-group" id="s-audit">
+              <div class="settings-group-title">Audit Log</div>
+              <div class="card">
+                <div class="row-item">
+                  <div class="row-meta">
+                    <div class="row-title">Tamper-evident AI ledger</div>
+                    <div class="row-sub">Every AI and GitHub action is recorded in a hash-chained local log. Produces audit evidence to support EU AI Act Article&nbsp;12 / ISO&nbsp;42001 record-keeping — no cloud, no telemetry.</div>
+                  </div>
+                  <div class="row-control row" style="gap: 8px;">
+                    <span class="badge" data-audit-status>—</span>
+                    <button class="btn" data-audit-verify-btn>Verify chain</button>
+                    <button class="btn" data-audit-refresh>Refresh</button>
+                  </div>
+                </div>
+                <div class="row-item" style="display:block;">
+                  <div class="row-meta" style="margin-bottom: 6px;">
+                    <div class="row-title">Records</div>
+                    <div class="row-sub">Most recent first. Filter by time, kind, feature, or outcome.</div>
+                  </div>
+                  <div data-audit-table></div>
+                </div>
+                <div class="row-item">
+                  <div class="row-meta">
+                    <div class="row-title">Export</div>
+                    <div class="row-sub">Download the full audit trail for archival or external review.</div>
+                  </div>
+                  <div class="row-control row" style="gap: 8px;">
+                    <button class="btn" data-audit-export-jsonl>Export JSONL</button>
+                    <button class="btn" data-audit-export-csv>Export CSV</button>
                   </div>
                 </div>
               </div>
@@ -2589,5 +2628,6 @@ level:error AND "pool exhausted"</div>
 <script src="js/features.js"></script>
 <script src="js/tools.js"></script>
 <script src="js/brain-client.js"></script>
+<script src="js/audit-ui.js"></script>
 </body>
 </html>

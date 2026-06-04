@@ -26,6 +26,7 @@ const MAX_EVENTS = 500;        // ring-buffer cap for the activity log
 const MAX_SNAPSHOTS = 50;      // brain-generated snapshots we keep around for UI catch-up
 const MAX_DRAFTS = 30;         // matches devops:issue-drafts cap in the frontend
 const MAX_SCANS = 20;          // scheduled-scan results retained in memory
+const MAX_ENRICH_QUEUE = 50;   // pending LLM enrichment drafts (drop-oldest beyond this)
 
 class Brain {
   constructor(opts = {}) {
@@ -100,6 +101,16 @@ class Brain {
     const accepted = {};
     for (const k of validKeys) {
       if (Object.prototype.hasOwnProperty.call(partial, k)) accepted[k] = partial[k];
+    }
+    // Coerce/validate so a malformed UI POST (NaN slider, blank path) can't poison state.
+    if ('cpuCeiling' in accepted) {
+      const n = Number(accepted.cpuCeiling);
+      accepted.cpuCeiling = Number.isFinite(n) ? n : this._defaultSettings().cpuCeiling;
+    }
+    if ('watchedLogPaths' in accepted) {
+      accepted.watchedLogPaths = Array.isArray(accepted.watchedLogPaths)
+        ? accepted.watchedLogPaths.filter((p) => typeof p === 'string' && p.trim())
+        : [];
     }
     const previous = Object.assign({}, this.settings);
     Object.assign(this.settings, accepted);
@@ -552,8 +563,18 @@ class LogWatchdog {
     });
     // Phase 5: queue async enrichment if LLM is wired AND user has it on.
     if (this.enrich && this.brain.isEnabled('aiEnrichDrafts')) {
-      this.enrichQueue.push(draft);
+      this._enqueueEnrich(draft);
       this._drainQueue();
+    }
+  }
+
+  // Bounded enqueue: cap the pending-enrichment backlog so a noisy log can't
+  // grow the queue without limit. Drops the oldest pending draft on overflow.
+  _enqueueEnrich(draft) {
+    this.enrichQueue.push(draft);
+    if (this.enrichQueue.length > MAX_ENRICH_QUEUE) {
+      this.enrichQueue.shift();
+      this.brain.log('warn', this.name, 'enrich queue full — dropped oldest draft', { cap: MAX_ENRICH_QUEUE });
     }
   }
 

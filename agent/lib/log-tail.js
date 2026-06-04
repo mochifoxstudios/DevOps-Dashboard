@@ -22,7 +22,12 @@ function isLogPath(filePath, exts) {
    line if we didn't read from the start, so callers always get clean lines. */
 async function readLastBytes(filePath, maxBytes) {
   const cap = Math.max(1024, Math.min(maxBytes || 64 * 1024, 4 * 1024 * 1024));
-  const stat = await fs.promises.stat(filePath);
+  let stat;
+  try { stat = await fs.promises.stat(filePath); }
+  catch (e) {
+    if (e.code === 'ENOENT') throw Object.assign(new Error('File not found'), { statusCode: 404 });
+    throw e;
+  }
   if (!stat.isFile()) throw Object.assign(new Error('Not a regular file'), { statusCode: 400 });
   const startByte = Math.max(0, stat.size - cap);
   const fd = await fs.promises.open(filePath, 'r');

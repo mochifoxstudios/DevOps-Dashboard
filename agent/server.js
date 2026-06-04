@@ -25,7 +25,7 @@ const { Brain, GitSentinel, LogWatchdog, Scheduler, ResourceThrottle } = require
 const { LLMProvider } = require('./lib/llm');
 const { Audit } = require('./lib/audit');
 const { Keystore } = require('./lib/keystore');
-const { diffSnapshots } = require('./lib/snapshot-diff');
+const { diffSnapshots, isValidSnapshot } = require('./lib/snapshot-diff');
 const { GitHub } = require('./lib/github');
 const sysinfo = require('./lib/system');
 
@@ -37,6 +37,7 @@ const SCRAPER_ALLOW_ANY = process.env.SCRAPER_ALLOW_ANY === 'true';
 const REGISTRY_LOOKUP_ENABLED = process.env.REGISTRY_LOOKUP_ENABLED !== 'false';
 const LOG_TAIL_EXTS = (process.env.LOG_TAIL_EXTENSIONS || '')
   .split(',').map((s) => s.trim()).filter(Boolean);
+const SSE_MAX_MS = parseInt(process.env.SSE_MAX_MS || '', 10) || 30 * 60 * 1000; // force-close SSE after 30 min
 const HOST = process.env.HOST || '127.0.0.1';
 const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || '')
   .split(',').map((s) => s.trim()).filter(Boolean);
@@ -199,10 +200,14 @@ app.get('/api/log-tail/stream', (req, res) => {
   }, 25000);
 
   const cleanup = () => {
+    clearTimeout(ttl);
     clearInterval(heartbeat);
     unsubscribe();
     stream.close();
   };
+  // Force-close long-lived SSE connections so a hung client can't hold a
+  // chokidar watcher open indefinitely.
+  const ttl = setTimeout(() => { cleanup(); if (!res.writableEnded) res.end(); }, SSE_MAX_MS);
   req.on('close', cleanup);
   req.on('error', cleanup);
 
@@ -363,7 +368,7 @@ app.get('/api/agent/scans', (req, res) => {
 // optionally also produce an LLM-narrated paragraph.
 app.post('/api/agent/snapshot-diff', wrap(async (req, res) => {
   const { snapA, snapB, narrate } = req.body || {};
-  if (!snapA || !snapB) return res.status(400).json({ error: 'snapA + snapB required' });
+  if (!isValidSnapshot(snapA) || !isValidSnapshot(snapB)) return res.status(400).json({ error: 'snapA and snapB must be snapshot objects with a capture field' });
   const diff = diffSnapshots(snapA, snapB);
   let narration = null;
   if (narrate) {
@@ -385,7 +390,7 @@ app.post('/api/agent/enrich-draft', wrap(async (req, res) => {
   if (draft.enriched) return res.json({ ok: true, already: true });
   const watchdog = brain.sentinels.find((s) => s.name === 'log-watchdog');
   if (!watchdog || !watchdog.enrich) return res.status(503).json({ error: 'enrichment unavailable' });
-  watchdog.enrichQueue.push(draft);
+  watchdog._enqueueEnrich(draft);
   watchdog._drainQueue();
   res.json({ ok: true, queued: true });
 }));

@@ -41,4 +41,10 @@ function diffSnapshots(a, b) {
   };
 }
 
-module.exports = { diffSnapshots };
+// Minimal shape guard so the /snapshot-diff endpoint rejects malformed bodies
+// (e.g. corrupted localStorage) instead of throwing deep in the diff engine.
+function isValidSnapshot(s) {
+  return !!(s && typeof s === 'object' && s.capture && typeof s.capture === 'object');
+}
+
+module.exports = { diffSnapshots, isValidSnapshot };

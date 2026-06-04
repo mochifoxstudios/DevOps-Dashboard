@@ -370,7 +370,7 @@ Each tool has at least three activation paths: sidebar nav (or ⌘1–5), primar
 
 **Mode 1/2:** uses the browser's `fetch(url, { mode: 'cors' })`. If the remote server blocks CORS (most public docs sites do), you get a clear error toast suggesting drag-drop.
 
-**Mode 3:** on CORS failure, the dashboard automatically falls back to `POST /api/scraper/fetch` against the agent. The agent has no CORS layer (Node `fetch` is unrestricted), runs SSRF protection (refuses private/internal IPs even on redirects), checks the host against `SCRAPER_ALLOWED_HOSTS`, then returns the response. If the response is HTML, it runs through `turndown` to produce clean Markdown.
+**Mode 3:** on CORS failure, the dashboard automatically falls back to `POST /api/scraper/fetch` against the agent. The agent fetches server-side (Node `fetch` isn't subject to browser CORS), runs SSRF protection (refuses private/internal IPs, re-validated on every redirect hop), checks the host against `SCRAPER_ALLOWED_HOSTS`, then returns the response. If the response is HTML, it runs through `turndown` to produce clean Markdown.
 
 **Data lives in:** `localStorage["devops:doc-cache"]`, capped at 30 docs. Each entry: `{ id, title, body, host, when }`.
 
@@ -736,7 +736,7 @@ Earlier scripts expose APIs on `window.DevOps`; later scripts consume them. Don'
 
 **Frontend:** runs entirely in your browser. Reads/writes `localStorage` (per-origin). No network calls except to the agent (when present) and direct browser fetches you initiate from the Docs Scraper.
 
-**Agent (Mode 3):** every file/git operation routes through `withinWorkspace()` — paths that escape `WORKSPACE_ROOT` are refused with HTTP 403. Env vars matching `SECRET|TOKEN|KEY|PASSWORD|PASSPHRASE|AUTH|CREDENTIAL|COOKIE|SESSION|BEARER|API_KEY|PRIVATE` are redacted before they leave the process. The scraper has a default-deny hostname allowlist and SSRF protection (refuses DNS resolutions to private/internal IPs, even on redirects). Destructive operations are disabled by default (`ALLOW_DESTRUCTIVE=false`) and require both that flag AND a `X-Confirm-Destructive: yes` request header. Only five hardcoded hostnames are ever contacted for registry lookups. See [`agent/README.md`](agent/README.md) for the full model.
+**Agent (Mode 3):** binds to `127.0.0.1` by default and accepts cross-origin browser calls only from localhost origins — so a remote website you visit can't drive your local agent (set `HOST=0.0.0.0` deliberately for LAN/WSL/docker use; the banner warns when you do). Every file/git operation routes through `withinWorkspace()`, which resolves symlinks and refuses paths that escape `WORKSPACE_ROOT` with HTTP 403; the log-tail endpoints further restrict reads to log-shaped extensions (`.log/.txt/.out/.err`). Env vars matching `SECRET|TOKEN|KEY|PASSWORD|PASSPHRASE|AUTH|CREDENTIAL|COOKIE|SESSION|BEARER|API_KEY|PRIVATE` are redacted before they leave the process. The scraper has a default-deny hostname allowlist and SSRF protection that re-validates every redirect hop before it is dialed (refusing private/internal IPs). Destructive operations are disabled by default (`ALLOW_DESTRUCTIVE=false`) and require both that flag AND a `X-Confirm-Destructive: yes` request header. Only five hardcoded hostnames are ever contacted for registry lookups. See [`agent/README.md`](agent/README.md) for the full model.
 
 ---
 

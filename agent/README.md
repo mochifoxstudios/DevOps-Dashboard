@@ -37,6 +37,9 @@ npm run dev
 | Key | Default | Purpose |
 |---|---|---|
 | `PORT` | `3737` | Port the agent listens on |
+| `HOST` | `127.0.0.1` | Interface to bind. Loopback by default; `0.0.0.0` exposes the (unauthenticated) agent to your LAN |
+| `CORS_ALLOWED_ORIGINS` | empty | Extra cross-origin browser origins allowed (comma-separated). localhost/127.0.0.1 always allowed; remote always denied |
+| `LOG_TAIL_EXTENSIONS` | `.log,.txt,.out,.err` | Extensions the log-tail `/file` and `/stream` endpoints may read |
 | `WORKSPACE_ROOT` | cwd | Single directory the agent is allowed to inspect (file ops + `git`) |
 | `ALLOW_DESTRUCTIVE` | `false` | When true, mutating endpoints are accepted *with* the `X-Confirm-Destructive: yes` header |
 | `EXTRA_REDACT_PATTERNS` | empty | Comma-separated regex patterns added to the env-var redaction list |
@@ -49,7 +52,8 @@ Default redaction patterns (always on): `SECRET`, `TOKEN`, `KEY`, `PASSWORD`, `P
 - **Destructive gate**: `lib/safety.js#requireDestructiveAllowed` is middleware that returns 403 unless `ALLOW_DESTRUCTIVE=true` AND the client sends `X-Confirm-Destructive: yes`.
 - **System commands**: only specific allowlisted commands are run via `child_process.exec` — `ps`, `tasklist`, `netstat`, `ss`, `git branch --show-current`, `git rev-parse HEAD`, `git status --porcelain`, `git config --get remote.origin.url`. No user input is concatenated into shell strings.
 - **Output caps**: each command has a `maxBuffer` and `timeout`. Process and port lists are truncated to 100 entries.
-- **Bind address**: Express defaults to `0.0.0.0`. If you want loopback-only, pass `app.listen(PORT, '127.0.0.1', …)` — the default is permissive because docker-desktop / WSL / VS Code Forwarded Ports often need 0.0.0.0.
+- **Bind address**: binds `127.0.0.1` (loopback) by default, so only this machine can reach the agent. Set `HOST=0.0.0.0` to expose it on your LAN (docker-desktop / WSL / VS Code Forwarded Ports) — the agent has no authentication, so do this deliberately; the startup banner flags a `0.0.0.0` bind.
+- **CORS**: cross-origin browser requests are allowed only from `localhost`/`127.0.0.1` (any port, which covers Mode 2's python server) or an explicit `CORS_ALLOWED_ORIGINS` entry. Remote origins receive no `Access-Control-Allow-Origin` header, so a website you happen to visit cannot read the local agent's responses.
 
 ## API (Phase 1)
 
@@ -67,7 +71,7 @@ All responses are JSON. Errors return `{ "error": "<message>" }` with a 4xx/5xx 
 
 ## API (Phase 2 — Log-Tail)
 
-All paths are validated against `WORKSPACE_ROOT` via `lib/safety.js#withinWorkspace`. Paths that resolve outside the root return HTTP 403.
+All paths are validated against `WORKSPACE_ROOT` via `lib/safety.js#withinWorkspace`, which resolves symlinks (a symlinked path that escapes the root is rejected, not just lexical `..`). Paths that resolve outside the root return HTTP 403. The `/file` and `/stream` endpoints additionally require a log-shaped extension (`.log`, `.txt`, `.out`, `.err`; override via `LOG_TAIL_EXTENSIONS`) so they can't be used to read source files or secrets that live in the workspace.
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -118,7 +122,7 @@ Security model:
 | **Host allowlist** | `SCRAPER_ALLOWED_HOSTS` is a comma-separated list. Exact match (`docs.stripe.com`) or subdomain wildcard (`*.stripe.com`). Default empty → deny all. |
 | **Allow-any override** | `SCRAPER_ALLOW_ANY=true` bypasses the allowlist (SSRF check still applies). Off by default. |
 | **SSRF block** | Hostname is DNS-resolved (`dns.lookup({ all: true })`); request is refused if **any** resolved IP is in a private range: 127/8, 10/8, 172.16/12, 192.168/16, 169.254/16, 100.64/10, 0.0.0.0/8, IPv6 ::1, fc00::/7, fe80::/10, IPv4-mapped IPv6. |
-| **Redirect re-validation** | After redirects, the final URL's host is re-checked against allowlist + SSRF rules. A whitelisted host can't redirect into a private IP. |
+| **Per-hop redirect validation** | Redirects are followed manually (`redirect: 'manual'`); every hop's scheme + allowlist + SSRF guard is re-checked **before** that hop is dialed (max 5 hops). An allowlisted host cannot bounce the agent into a private IP — the internal request is never made, not just withheld from the browser. |
 | **Header sanitization** | Incoming request headers are not forwarded. Agent sets its own `User-Agent`, `Accept`, `Accept-Language`. Response `Set-Cookie` / `Authorization` headers are never exposed to the browser (we return body as JSON, not pass-through). |
 | **Schema restriction** | Only `http:` / `https:` URLs accepted. No `file://`, `data:`, `gopher://`, etc. |
 | **Size cap** | Default 2 MB (max 8 MB) — read with a byte counter and a streaming abort. |
@@ -291,7 +295,7 @@ All four pass on Windows · Node 24 · git 2.x.
 
 ### AI security model
 
-- **Provider keys never reach the browser.** `POST /api/llm/test` returns only `{ok, latencyMs}`. Keys live in `agent/.ai-keys.json`, encrypted with `aes-256-gcm` under a key derived via `scryptSync(WORKSPACE_ROOT + os.hostname() + os.userInfo().username, salt, 32)`. The salt is a per-install 16-byte random file at `agent/.salt`.
+- **Provider keys never reach the browser.** `POST /api/llm/test` returns only `{ok, latencyMs}`. Keys live in `agent/.ai-keys.json`, encrypted with `aes-256-gcm` under a key derived via `scryptSync(WORKSPACE_ROOT + os.hostname() + os.userInfo().username, salt, 32)`. The salt is a per-install 16-byte random file at `agent/.salt`. **Scope of this protection:** the derivation inputs (workspace root, hostname, username) are not secret, so the encryption defends against the keys file leaking *on its own* (e.g. copied or committed without `.salt`) — it is **not** a defense against an attacker who can already read the agent directory, and the `0o600` mode is a no-op on Windows (NTFS ACLs ignore it). Treat `agent/.ai-keys.json` and `agent/.salt` as sensitive local files (both are gitignored).
 - **All prompts pass through `lib/llm/redact.js`** before any adapter sees them. The audit record stores `redactionSummary` (counts only) — not plaintext.
 - **Outbound LLM endpoint allowlist** via `LLM_ENDPOINT_ALLOWLIST`. Hostnames outside it are refused before the adapter dials.
 - **No prompt plaintexts persisted.** Only `promptHash`, `promptBytes`, `redactionSummary` go to the audit log.

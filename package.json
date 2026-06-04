@@ -1,0 +1,12 @@
+{
+  "name": "devops-local",
+  "version": "1.00.1",
+  "private": true,
+  "description": "DevOps Local — local-first developer-ops dashboard. Root test harness runs the frontend (pure-logic) and agent suites.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

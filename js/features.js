@@ -957,19 +957,7 @@
       terminal.innerHTML = html || '<div class="term-line"><span class="msg" style="color: var(--text-meta);">No matching lines</span></div>';
     }
 
-    function parseLogText(text) {
-      return text.split(/\r?\n/).filter(function (l) { return l.length; }).map(function (line) {
-        var level = 'info';
-        if (/\b(error|err|fatal|critical|exception)\b/i.test(line)) level = 'err';
-        else if (/\b(warn|warning)\b/i.test(line)) level = 'warn';
-        else if (/\b(debug|trace)\b/i.test(line)) level = 'info';
-        else if (/\b(ok|success|done|started|listening)\b/i.test(line)) level = 'ok';
-        var tsMatch = line.match(/^\s*(\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?(?:Z|[+\-]\d{2}:?\d{2})?)/)
-                   || line.match(/^\s*(\d{2}:\d{2}:\d{2}(?:[.,]\d+)?)/)
-                   || line.match(/^\s*\[(\d[^\]]+)\]/);
-        return { raw: line, ts: tsMatch ? tsMatch[1] : '', level: level, msg: line };
-      });
-    }
+    // (log parsing + level classification now live in js/log-engine.js)
 
     // Buffer of parsed lines currently rendered. Capped at 2000 in renderLines,
     // but we keep the full window in memory so filter / pause / resume work.
@@ -1001,15 +989,7 @@
     }
 
     function parseLine(line) {
-      var level = 'info';
-      if (/\b(error|err|fatal|critical|exception)\b/i.test(line)) level = 'err';
-      else if (/\b(warn|warning)\b/i.test(line)) level = 'warn';
-      else if (/\b(debug|trace)\b/i.test(line)) level = 'info';
-      else if (/\b(ok|success|done|started|listening)\b/i.test(line)) level = 'ok';
-      var tsMatch = line.match(/^\s*(\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?(?:Z|[+\-]\d{2}:?\d{2})?)/)
-                 || line.match(/^\s*(\d{2}:\d{2}:\d{2}(?:[.,]\d+)?)/)
-                 || line.match(/^\s*\[(\d[^\]]+)\]/);
-      return { raw: line, ts: tsMatch ? tsMatch[1] : '', level: level, msg: line };
+      return D.logEngine.parseLine(line);
     }
 
     function handleFile(file) {

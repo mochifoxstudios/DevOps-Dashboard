@@ -18,9 +18,10 @@ function makeRedactor(extraPatternStrings = []) {
   return function redactWithExtras(text) {
     let envVarsScrubbed = 0, secretsFound = 0, ipsScrubbed = 0, extrasScrubbed = 0;
     let out = String(text || '');
-    for (const re of DEFAULT_SECRET_RES) {
-      out = out.replace(re, (m) => { secretsFound++; return '<redacted-secret>'; });
-    }
+    // First pattern matches NAME=value env-var shapes; second matches known
+    // token formats (sk-/ghp_/xoxb-/AKIA…). Count them separately.
+    out = out.replace(DEFAULT_SECRET_RES[0], () => { envVarsScrubbed++; return '<redacted-secret>'; });
+    out = out.replace(DEFAULT_SECRET_RES[1], () => { secretsFound++;   return '<redacted-secret>'; });
     for (const re of extras) {
       out = out.replace(re, () => { extrasScrubbed++; return '<redacted>'; });
     }

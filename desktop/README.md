@@ -5,6 +5,13 @@ installable desktop app. There's no frontend rewrite: the agent already serves t
 dashboard same-origin, so this wrapper just runs the agent as a sidecar and points
 a window at it.
 
+> ⚠️ **Build requirement: NTFS.** `npm install` / `npm run build` here must run on an
+> **NTFS** drive. Electron + electron-builder extract a large, deeply-nested binary
+> tree and use symlinks for packaging — **exFAT/FAT drives fail** (`code 77` on
+> install, `EPERM` on cleanup). The dashboard + agent themselves run fine on any
+> drive; this is a build-time constraint only. If your repo lives on an exFAT drive,
+> clone a copy to `C:\` (NTFS) and build there — the resulting installer runs anywhere.
+
 ## What it does on launch
 
 1. **First run:** prompts you to pick a **workspace folder** (the single project the

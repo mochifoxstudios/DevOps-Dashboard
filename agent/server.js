@@ -561,6 +561,9 @@ app.get('/api/agent/audit', (req, res) => {
 
 app.get('/api/agent/audit/verify', (req, res) => res.json(audit.verify()));
 
+// Public key for offline/external verification of an exported audit log.
+app.get('/api/agent/audit/pubkey', (req, res) => res.type('text/plain').send(audit.publicKeyPem()));
+
 app.get('/api/agent/audit/export', (req, res) => {
   const fmt = (req.query.format || 'jsonl').toLowerCase();
   const records = audit.read({ limit: 50000 });

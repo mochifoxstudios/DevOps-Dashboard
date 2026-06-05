@@ -4,6 +4,8 @@ agent/.brain-state.json
 agent/.audit.log
 agent/.audit-*.log
 agent/.audit-tip
+agent/.audit-key.pem
+agent/.audit-pubkey.pem
 agent/.ai-keys.json
 agent/.salt
 agent/.github-queue.json

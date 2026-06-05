@@ -68,8 +68,8 @@
     setStatus('verifying…', '');
     fetch(base() + '/api/agent/audit/verify').then(function (r) { return r.json(); })
       .then(function (j) {
-        if (j && j.ok) setStatus('chain intact · ' + (j.recordsVerified != null ? j.recordsVerified : '?') + ' records', 'ok');
-        else setStatus('chain BROKEN' + (j && j.brokenAt ? ' @ ' + j.brokenAt : ''), 'err');
+        if (j && j.ok) setStatus('chain intact · ' + (j.recordsVerified != null ? j.recordsVerified : '?') + ' records' + (j.signed ? ' · Ed25519-signed' : ''), 'ok');
+        else setStatus('chain BROKEN' + (j && j.brokenAt ? ' @ ' + j.brokenAt : '') + (j && j.reason ? ' (' + j.reason + ')' : ''), 'err');
       })
       .catch(function () { setStatus('verify failed', 'err'); });
   }

@@ -169,6 +169,9 @@
           }
         });
       }
+      // Login-screen footer host line (still design-time mock otherwise).
+      var hostLine = document.querySelector('[data-host-line]');
+      if (hostLine) hostLine.textContent = s.hostname + ' · ' + s.cpus + ' cores · ' + s.totalMemGB + ' GB';
     }).catch(function () {});
     // Local Toolchain rows
     fetch(base + '/api/toolchain').then(function (r) { return r.json(); }).then(function (tc) {

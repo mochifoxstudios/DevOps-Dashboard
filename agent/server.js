@@ -63,7 +63,7 @@ if (__dirname === WORKSPACE_ROOT || (__dirname + path.sep).startsWith(WORKSPACE_
 }
 
 const STATIC_ROOT = path.resolve(__dirname, '..');
-const VERSION = '1.00.1';
+const VERSION = '1.00.2';
 const STARTED_AT = new Date().toISOString();
 
 const app = express();

@@ -1,6 +1,6 @@
 {
   "name": "devops-local-desktop",
-  "version": "1.00.1",
+  "version": "1.00.2",
   "private": true,
   "description": "DevOps Local — Electron desktop wrapper that runs the dashboard + local agent as one app.",
   "main": "main.js",

@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: test (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # The agent suite needs its runtime deps (chokidar, express, …).
+      # The frontend suite (tests/) is pure node:test with no deps.
+      - name: Install agent dependencies
+        working-directory: agent
+        run: npm ci
+
+      - name: Run tests (frontend + agent)
+        run: npm test
+
+      - name: Audit production dependencies
+        continue-on-error: true
+        working-directory: agent
+        run: npm audit --omit=dev

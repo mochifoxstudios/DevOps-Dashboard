@@ -731,6 +731,9 @@
 
     function detectFormat(name, content) {
       var n = (name || '').toLowerCase();
+      if (n.endsWith('package-lock.json')) return 'package-lock.json';
+      if (n.endsWith('yarn.lock')) return 'yarn.lock';
+      if (n.endsWith('pnpm-lock.yaml')) return 'pnpm-lock.yaml';
       if (n.endsWith('package.json') || n === 'package.json') return 'package.json';
       if (n.endsWith('requirements.txt')) return 'requirements.txt';
       if (n.endsWith('cargo.toml')) return 'Cargo.toml';
@@ -807,21 +810,67 @@
       return out;
     }
 
+    function parsePackageLock(text) {
+      var j; try { j = JSON.parse(text); } catch (e) { return []; }
+      var out = [], seen = {};
+      function push(name, ver, dev) { if (seen[name]) return; seen[name] = 1; out.push({ name: name, current: ver || '*', latest: '—', status: dev ? 'dev' : 'runtime', license: '—', usedBy: 'package-lock.json' }); }
+      if (j && j.packages) {
+        Object.keys(j.packages).forEach(function (key) {
+          if (key === '') return;
+          var m = key.match(/(?:^|\/)node_modules\/((?:@[^/]+\/)?[^/]+)$/);
+          if (m) { var e = j.packages[key] || {}; push(m[1], e.version, e.dev); }
+        });
+      } else if (j && j.dependencies) {
+        Object.keys(j.dependencies).forEach(function (name) { var e = j.dependencies[name] || {}; push(name, e.version, e.dev); });
+      }
+      return out;
+    }
+    function parseYarnLock(text) {
+      var out = [], seen = {}, names = [];
+      String(text).split(/\r?\n/).forEach(function (raw) {
+        if (/^\s*#/.test(raw) || raw.trim() === '') return;
+        if (!/^\s/.test(raw) && raw.trim().slice(-1) === ':') {
+          names = raw.replace(/:\s*$/, '').split(',').map(function (s) { s = s.trim().replace(/^"|"$/g, ''); var at = s.lastIndexOf('@'); return at > 0 ? s.slice(0, at) : s; });
+        } else {
+          var m = raw.match(/^\s+version:?\s+"?([^"\s]+)"?/);
+          if (m && names.length) { names.forEach(function (n) { if (n && !seen[n]) { seen[n] = 1; out.push({ name: n, current: m[1], latest: '—', status: 'npm-lock', license: '—', usedBy: 'yarn.lock' }); } }); names = []; }
+        }
+      });
+      return out;
+    }
+    function parsePnpmLock(text) {
+      var out = [], seen = {}, inPkgs = false;
+      String(text).split(/\r?\n/).forEach(function (raw) {
+        if (/^packages:\s*$/.test(raw)) { inPkgs = true; return; }
+        if (inPkgs && /^\S/.test(raw)) inPkgs = false;
+        if (!inPkgs) return;
+        var m = raw.match(/^\s+['"/]?((?:@[^/@]+\/)?[^/@'":\s]+)@([^():'"\s]+)/);
+        if (m) { var k = m[1] + '@' + m[2]; if (!seen[k]) { seen[k] = 1; out.push({ name: m[1], current: m[2], latest: '—', status: 'npm-lock', license: '—', usedBy: 'pnpm-lock.yaml' }); } }
+      });
+      return out;
+    }
+
     function parse(format, text) {
       switch (format) {
-        case 'package.json':     return parsePackageJson(text);
-        case 'requirements.txt': return parseRequirementsTxt(text);
-        case 'Cargo.toml':       return parseCargoToml(text);
-        case 'go.mod':           return parseGoMod(text);
-        case 'Gemfile.lock':     return parseGemfileLock(text);
-        case 'Pipfile':          return parseRequirementsTxt(text);
-        default:                 return [];
+        case 'package.json':      return parsePackageJson(text);
+        case 'package-lock.json': return parsePackageLock(text);
+        case 'yarn.lock':         return parseYarnLock(text);
+        case 'pnpm-lock.yaml':    return parsePnpmLock(text);
+        case 'requirements.txt':  return parseRequirementsTxt(text);
+        case 'Cargo.toml':        return parseCargoToml(text);
+        case 'go.mod':            return parseGoMod(text);
+        case 'Gemfile.lock':      return parseGemfileLock(text);
+        case 'Pipfile':           return parseRequirementsTxt(text);
+        default:                  return [];
       }
     }
 
     // Map manifest formats to the registry ecosystem name expected by the agent.
     var FORMAT_TO_ECOSYSTEM = {
-      'package.json':     'npm',
+      'package.json':      'npm',
+      'package-lock.json': 'npm',
+      'yarn.lock':         'npm',
+      'pnpm-lock.yaml':    'npm',
       'requirements.txt': 'pip',
       'Pipfile':          'pip',
       'Cargo.toml':       'cargo',

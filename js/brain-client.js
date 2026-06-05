@@ -379,6 +379,7 @@
   var SETTINGS_MAP = [
     { selector: '#s-watchers',  rowTitle: 'Auto-snapshot on branch switch', brainKey: 'gitSentinel',   type: 'switch' },
     { selector: '#s-watchers',  rowTitle: 'Pin log errors automatically',   brainKey: 'logWatchdog',   type: 'switch' },
+    { selector: '#s-watchers',  rowTitle: 'Auto-scan on manifest change',   brainKey: 'manifestWatch', type: 'switch' },
     { selector: '#s-watchers',  rowTitle: 'Watched log paths',              brainKey: 'watchedLogPaths', type: 'list' },
     { selector: '#s-watchers',  rowTitle: 'Scheduled scan',                 brainKey: 'scheduledScanTime', type: 'text' },
     { selector: '#s-resources', rowTitle: 'CPU ceiling',                    brainKey: 'cpuCeiling',    type: 'range' },

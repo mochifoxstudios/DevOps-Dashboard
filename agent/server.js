@@ -22,7 +22,7 @@ const ctx = require('./lib/context-snap');
 const logTail = require('./lib/log-tail');
 const depRegistry = require('./lib/dep-registry');
 const scraper = require('./lib/scraper');
-const { Brain, GitSentinel, LogWatchdog, Scheduler, ResourceThrottle } = require('./lib/brain');
+const { Brain, GitSentinel, LogWatchdog, Scheduler, ResourceThrottle, ManifestSentinel } = require('./lib/brain');
 const { LLMProvider } = require('./lib/llm');
 const { Audit } = require('./lib/audit');
 const { Keystore } = require('./lib/keystore');
@@ -63,7 +63,7 @@ if (__dirname === WORKSPACE_ROOT || (__dirname + path.sep).startsWith(WORKSPACE_
 }
 
 const STATIC_ROOT = path.resolve(__dirname, '..');
-const VERSION = '1.00.1';
+const VERSION = '1.00.2';
 const STARTED_AT = new Date().toISOString();
 
 const app = express();
@@ -305,6 +305,7 @@ brain.addSentinel(new GitSentinel(brain,      { workspaceRoot: WORKSPACE_ROOT })
 brain.addSentinel(new LogWatchdog(brain,      { workspaceRoot: WORKSPACE_ROOT }));
 brain.addSentinel(new Scheduler(brain,        { workspaceRoot: WORKSPACE_ROOT }));
 brain.addSentinel(new ResourceThrottle(brain, {}));
+brain.addSentinel(new ManifestSentinel(brain, { workspaceRoot: WORKSPACE_ROOT }));
 
 // Wire the LLM provider into the LogWatchdog so it can enrich drafts.
 brain.setEnricher((args) => buildProvider().complete(args));
@@ -560,6 +561,9 @@ app.get('/api/agent/audit', (req, res) => {
 });
 
 app.get('/api/agent/audit/verify', (req, res) => res.json(audit.verify()));
+
+// Public key for offline/external verification of an exported audit log.
+app.get('/api/agent/audit/pubkey', (req, res) => res.type('text/plain').send(audit.publicKeyPem()));
 
 app.get('/api/agent/audit/export', (req, res) => {
   const fmt = (req.query.format || 'jsonl').toLowerCase();

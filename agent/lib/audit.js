@@ -4,6 +4,8 @@ const crypto = require('node:crypto');
 
 const FILE = '.audit.log';
 const TIP_FILE = '.audit-tip';
+const KEY_FILE = '.audit-key.pem';        // Ed25519 private key (gitignored, per-install)
+const PUBKEY_FILE = '.audit-pubkey.pem';  // public key (gitignored; exportable for offline verify)
 
 function sha256(s) { return 'sha256:' + crypto.createHash('sha256').update(s).digest('hex'); }
 function newId() { return 'aud-' + Date.now().toString(36) + '-' + crypto.randomBytes(4).toString('hex'); }
@@ -16,9 +18,31 @@ class Audit {
     this.keep = keep;
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     this._tip = this._readTip();
+    this._ensureKeys();
   }
   _path() { return path.join(this.dir, FILE); }
   _tipPath() { return path.join(this.dir, TIP_FILE); }
+  _keyPath() { return path.join(this.dir, KEY_FILE); }
+  _pubKeyPath() { return path.join(this.dir, PUBKEY_FILE); }
+  // Load the per-install Ed25519 keypair, generating it on first run. The private
+  // key sits beside the log (same local-read trust model as .salt); signing buys
+  // EXTERNAL verifiability — an auditor with only the public key can confirm an
+  // exported log was produced by this install and not altered by anyone without
+  // the private key. It does NOT defend against a local attacker who can read the
+  // key. See agent/README.md "Integrity vs. authenticity".
+  _ensureKeys() {
+    try {
+      this._privateKey = crypto.createPrivateKey(fs.readFileSync(this._keyPath()));
+      this._publicKey = crypto.createPublicKey(fs.readFileSync(this._pubKeyPath()));
+      return;
+    } catch { /* generate below */ }
+    const { privateKey, publicKey } = crypto.generateKeyPairSync('ed25519');
+    fs.writeFileSync(this._keyPath(), privateKey.export({ type: 'pkcs8', format: 'pem' }), { mode: 0o600 });
+    fs.writeFileSync(this._pubKeyPath(), publicKey.export({ type: 'spki', format: 'pem' }));
+    this._privateKey = privateKey;
+    this._publicKey = publicKey;
+  }
+  publicKeyPem() { return this._publicKey.export({ type: 'spki', format: 'pem' }); }
   _readTip() {
     try { return fs.readFileSync(this._tipPath(), 'utf8').trim() || 'sha256:GENESIS'; }
     catch { return 'sha256:GENESIS'; }
@@ -43,6 +67,8 @@ class Audit {
       id: newId(),
       prevHash: this._tip
     });
+    // Sign the record (without the signature field) with the Ed25519 private key.
+    full.sig = crypto.sign(null, Buffer.from(JSON.stringify(full)), this._privateKey).toString('base64');
     const line = JSON.stringify(full);
     fs.appendFileSync(this._path(), line + '\n');
     this._tip = sha256(line);
@@ -82,6 +108,7 @@ class Audit {
     const firstLines = fs.readFileSync(files[0], 'utf8').trim().split('\n').filter(Boolean);
     if (firstLines.length === 0) return { ok: true, recordsVerified: 0, tipHash: 'sha256:GENESIS' };
     let prev = JSON.parse(firstLines[0]).prevHash;
+    let anyUnsigned = false;
     for (const f of files) {
       const lines = fs.readFileSync(f, 'utf8').trim().split('\n').filter(Boolean);
       for (const line of lines) {
@@ -89,11 +116,19 @@ class Audit {
         try { rec = JSON.parse(line); }
         catch { return { ok: false, recordsVerified: n, brokenAt: 'parse-error' }; }
         if (rec.prevHash !== prev) return { ok: false, recordsVerified: n, brokenAt: rec.id };
+        if (rec.sig) {
+          const rest = Object.assign({}, rec); delete rest.sig;
+          let okSig = false;
+          try { okSig = crypto.verify(null, Buffer.from(JSON.stringify(rest)), this._publicKey, Buffer.from(rec.sig, 'base64')); } catch { okSig = false; }
+          if (!okSig) return { ok: false, recordsVerified: n, brokenAt: rec.id, reason: 'signature' };
+        } else {
+          anyUnsigned = true; // legacy unsigned record — chain-verified only
+        }
         prev = sha256(line);
         n++;
       }
     }
-    return { ok: true, recordsVerified: n, tipHash: prev };
+    return { ok: true, recordsVerified: n, tipHash: prev, signed: !anyUnsigned };
   }
 }
 

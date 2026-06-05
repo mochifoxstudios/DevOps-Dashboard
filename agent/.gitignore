@@ -4,6 +4,8 @@ node_modules/
 .audit.log
 .audit-*.log
 .audit-tip
+.audit-key.pem
+.audit-pubkey.pem
 .ai-keys.json
 .salt
 .github-queue.json

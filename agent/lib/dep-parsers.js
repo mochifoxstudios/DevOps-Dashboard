@@ -6,7 +6,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const FORMAT_TO_ECOSYSTEM = {
-  'package.json':     'npm',
+  'package.json':      'npm',
+  'package-lock.json': 'npm',
+  'yarn.lock':         'npm',
+  'pnpm-lock.yaml':    'npm',
   'requirements.txt': 'pip',
   'Pipfile':          'pip',
   'Cargo.toml':       'cargo',
@@ -103,14 +106,81 @@ function parseGemfileLock(text) {
   return out;
 }
 
+// package-lock.json — v2/v3 `packages` map keyed by node path, or v1 `dependencies`.
+function parsePackageLock(text) {
+  let j; try { j = JSON.parse(text); } catch (_) { return []; }
+  const out = [], seen = new Set();
+  if (j && j.packages && typeof j.packages === 'object') {
+    for (const key of Object.keys(j.packages)) {
+      if (key === '') continue;
+      const m = key.match(/(?:^|\/)node_modules\/((?:@[^/]+\/)?[^/]+)$/);
+      if (!m) continue;
+      const name = m[1];
+      if (seen.has(name)) continue;
+      seen.add(name);
+      const e = j.packages[key] || {};
+      out.push({ name, current: e.version || '*', kind: e.dev ? 'dev' : 'runtime' });
+    }
+  } else if (j && j.dependencies && typeof j.dependencies === 'object') {
+    for (const name of Object.keys(j.dependencies)) {
+      const e = j.dependencies[name] || {};
+      out.push({ name, current: e.version || '*', kind: e.dev ? 'dev' : 'runtime' });
+    }
+  }
+  return out;
+}
+
+// yarn.lock v1 — blocks: `"name@range", "name@range2":` then `  version "x"`.
+function parseYarnLock(text) {
+  const out = [], seen = new Set();
+  let names = [];
+  for (const raw of String(text).split(/\r?\n/)) {
+    if (/^\s*#/.test(raw) || raw.trim() === '') continue;
+    if (!/^\s/.test(raw) && raw.trim().endsWith(':')) {
+      names = raw.replace(/:\s*$/, '').split(',').map((s) => {
+        s = s.trim().replace(/^"|"$/g, '');
+        const at = s.lastIndexOf('@');
+        return at > 0 ? s.slice(0, at) : s;
+      });
+    } else {
+      const m = raw.match(/^\s+version:?\s+"?([^"\s]+)"?/);
+      if (m && names.length) {
+        for (const n of names) if (n && !seen.has(n)) { seen.add(n); out.push({ name: n, current: m[1], kind: 'npm-lock' }); }
+        names = [];
+      }
+    }
+  }
+  return out;
+}
+
+// pnpm-lock.yaml — keys under `packages:` like `/name@ver:` or `'@scope/name@ver':`.
+function parsePnpmLock(text) {
+  const out = [], seen = new Set();
+  let inPackages = false;
+  for (const raw of String(text).split(/\r?\n/)) {
+    if (/^packages:\s*$/.test(raw)) { inPackages = true; continue; }
+    if (inPackages && /^\S/.test(raw)) inPackages = false;
+    if (!inPackages) continue;
+    const m = raw.match(/^\s+['"/]?((?:@[^/@]+\/)?[^/@'":\s]+)@([^():'"\s]+)/);
+    if (m) {
+      const key = m[1] + '@' + m[2];
+      if (!seen.has(key)) { seen.add(key); out.push({ name: m[1], current: m[2], kind: 'npm-lock' }); }
+    }
+  }
+  return out;
+}
+
 function parse(format, content) {
   switch (format) {
-    case 'package.json':     return parsePackageJson(content);
-    case 'requirements.txt': return parseRequirementsTxt(content);
-    case 'Pipfile':          return parseRequirementsTxt(content);
-    case 'Cargo.toml':       return parseCargoToml(content);
-    case 'go.mod':           return parseGoMod(content);
-    case 'Gemfile.lock':     return parseGemfileLock(content);
+    case 'package.json':      return parsePackageJson(content);
+    case 'package-lock.json': return parsePackageLock(content);
+    case 'yarn.lock':         return parseYarnLock(content);
+    case 'pnpm-lock.yaml':    return parsePnpmLock(content);
+    case 'requirements.txt':  return parseRequirementsTxt(content);
+    case 'Pipfile':           return parseRequirementsTxt(content);
+    case 'Cargo.toml':        return parseCargoToml(content);
+    case 'go.mod':            return parseGoMod(content);
+    case 'Gemfile.lock':      return parseGemfileLock(content);
     default: return [];
   }
 }

@@ -63,6 +63,8 @@ class Brain {
       gitSentinel: true,
       logWatchdog: true,
       scheduledScan: true,
+      // Auto-scan dependencies when a watched manifest changes.
+      manifestWatch: true,
       // Scheduled-scan time of day (24h HH:MM, local time).
       scheduledScanTime: '03:00',
       // CPU ceiling for throttling (percent). When exceeded, non-essential sentinels pause.
@@ -912,4 +914,60 @@ class ResourceThrottle {
   }
 }
 
-module.exports = { Brain, GitSentinel, LogWatchdog, Scheduler, ResourceThrottle };
+// Reactive sentinel: watches the top-level manifest and re-runs the dependency
+// scan when it changes (implements the "manifest-change scans" the Settings UI
+// advertises). Reuses the Scheduler's runScan so there's no scan-logic dup.
+class ManifestSentinel {
+  constructor(brain, opts = {}) {
+    this.brain = brain;
+    this.name = 'manifest-sentinel';
+    this.state = 'idle';                 // idle | watching | stopped
+    this.info = { watching: null };
+    this.workspaceRoot = opts.workspaceRoot || brain.workspaceRoot;
+    this.watcher = null;
+    this._timer = null;
+  }
+
+  async start() {
+    let manifest = null;
+    try { manifest = await depParsers.findTopLevelManifest(this.workspaceRoot); } catch (_) {}
+    if (!manifest) {
+      this.state = 'idle';
+      this.info = { watching: null, reason: 'no manifest at workspace root' };
+      this.brain.log('info', this.name, 'No top-level manifest — sentinel idle');
+      return;
+    }
+    this.manifestRel = manifest.relative;
+    this.watcher = chokidar.watch(manifest.absolute, {
+      persistent: true, ignoreInitial: true, usePolling: true, interval: 500
+    });
+    this.watcher.on('change', () => this._onChange());
+    this.watcher.on('add', () => this._onChange());
+    this.watcher.on('error', (e) => this.brain.log('error', this.name, 'Watcher error: ' + e.message));
+    await new Promise((resolve) => this.watcher.on('ready', resolve));
+    this.state = 'watching';
+    this.info = { watching: this.manifestRel };
+    this.brain.log('ok', this.name, 'Watching ' + this.manifestRel + ' for dependency changes');
+  }
+
+  _onChange() {
+    if (!this.brain.isEnabled('manifestWatch')) return;
+    if (this.brain.throttled) return;
+    clearTimeout(this._timer);   // debounce rapid editor saves
+    this._timer = setTimeout(() => {
+      const scheduler = this.brain.sentinels.find((s) => s.name === 'scheduler');
+      if (scheduler && typeof scheduler.runScan === 'function') {
+        this.brain.log('info', this.name, this.manifestRel + ' changed — scanning dependencies');
+        scheduler.runScan('manifest-change').catch((e) => this.brain.log('warn', this.name, 'scan failed: ' + e.message));
+      }
+    }, 600);
+  }
+
+  async stop() {
+    clearTimeout(this._timer);
+    if (this.watcher) { try { await this.watcher.close(); } catch (_) {} this.watcher = null; }
+    this.state = 'stopped';
+  }
+}
+
+module.exports = { Brain, GitSentinel, LogWatchdog, Scheduler, ResourceThrottle, ManifestSentinel };

@@ -22,7 +22,7 @@ const ctx = require('./lib/context-snap');
 const logTail = require('./lib/log-tail');
 const depRegistry = require('./lib/dep-registry');
 const scraper = require('./lib/scraper');
-const { Brain, GitSentinel, LogWatchdog, Scheduler, ResourceThrottle } = require('./lib/brain');
+const { Brain, GitSentinel, LogWatchdog, Scheduler, ResourceThrottle, ManifestSentinel } = require('./lib/brain');
 const { LLMProvider } = require('./lib/llm');
 const { Audit } = require('./lib/audit');
 const { Keystore } = require('./lib/keystore');
@@ -305,6 +305,7 @@ brain.addSentinel(new GitSentinel(brain,      { workspaceRoot: WORKSPACE_ROOT })
 brain.addSentinel(new LogWatchdog(brain,      { workspaceRoot: WORKSPACE_ROOT }));
 brain.addSentinel(new Scheduler(brain,        { workspaceRoot: WORKSPACE_ROOT }));
 brain.addSentinel(new ResourceThrottle(brain, {}));
+brain.addSentinel(new ManifestSentinel(brain, { workspaceRoot: WORKSPACE_ROOT }));
 
 // Wire the LLM provider into the LogWatchdog so it can enrich drafts.
 brain.setEnricher((args) => buildProvider().complete(args));
